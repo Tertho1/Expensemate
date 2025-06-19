@@ -33,10 +33,13 @@ Route::middleware('auth')->group(function () {
     // Analytics route
     Route::get('/analytics', [AnalyticsController::class, 'index'])->name('analytics');
 
-    // Export route
+    // Export routes
     Route::get('/export', [ExportController::class, 'index'])->name('export');
+    Route::get('/export/csv', [ExportController::class, 'csv'])->name('export.csv');
+    Route::get('/export/excel', [ExportController::class, 'excel'])->name('export.excel');
+    Route::get('/export/pdf', [ExportController::class, 'pdf'])->name('export.pdf');
 
-    // Settings route (if you have one)
+    // Settings route
     Route::get('/settings', function () {
         return view('settings');
     })->name('settings');

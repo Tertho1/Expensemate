@@ -1,6 +1,7 @@
 <?php
 
 namespace App\Http\Controllers;
+
 use App\Models\Transaction;
 use App\Models\Category;
 use Illuminate\Http\Request;
@@ -13,16 +14,11 @@ class TransactionController extends Controller
      */
     public function index()
     {
-        $user = Auth::user();
-
-        if (!$user) {
-            return redirect()->route('login');
-        }
-
-        $transactions = Transaction::where('user_id', $user->id)
-            ->with('category')
-            ->latest()
-            ->get();
+        $transactions = Transaction::with('category')
+            ->where('user_id', Auth::id())
+            ->orderBy('date', 'desc')
+            ->orderBy('created_at', 'desc')
+            ->paginate(15);
 
         return view('transactions.index', compact('transactions'));
     }
@@ -32,15 +28,8 @@ class TransactionController extends Controller
      */
     public function create()
     {
-        $userId = Auth::id();
-
-        if (!$userId) {
-            return redirect()->route('login');
-        }
-
-        // Get all categories (no grouping by type since we removed that field)
         $categories = Category::whereNull('user_id')
-            ->orWhere('user_id', $userId)
+            ->orWhere('user_id', Auth::id())
             ->orderBy('name')
             ->get();
 
@@ -52,12 +41,6 @@ class TransactionController extends Controller
      */
     public function store(Request $request)
     {
-        $userId = Auth::id();
-
-        if (!$userId) {
-            return redirect()->route('login');
-        }
-
         $validated = $request->validate([
             'type' => 'required|in:income,expense',
             'amount' => 'required|numeric|min:0',
@@ -66,7 +49,7 @@ class TransactionController extends Controller
             'note' => 'nullable|string',
         ]);
 
-        $validated['user_id'] = $userId;
+        $validated['user_id'] = Auth::id();
 
         Transaction::create($validated);
 
@@ -78,17 +61,12 @@ class TransactionController extends Controller
      */
     public function show(Transaction $transaction)
     {
-        $userId = Auth::id();
-
-        if (!$userId) {
-            return redirect()->route('login');
+        // Make sure user can only view their own transactions
+        if ($transaction->user_id !== Auth::id()) {
+            abort(403);
         }
 
-        // Simple authorization - user must own the transaction
-        if ($userId !== $transaction->user_id) {
-            abort(403, 'Unauthorized action');
-        }
-
+        $transaction->load('category');
         return view('transactions.show', compact('transaction'));
     }
 
@@ -97,19 +75,13 @@ class TransactionController extends Controller
      */
     public function edit(Transaction $transaction)
     {
-        $userId = Auth::id();
-
-        if (!$userId) {
-            return redirect()->route('login');
+        // Make sure user can only edit their own transactions
+        if ($transaction->user_id !== Auth::id()) {
+            abort(403);
         }
 
-        if ($userId !== $transaction->user_id) {
-            abort(403, 'Unauthorized action');
-        }
-
-        // Get all categories (no grouping by type)
         $categories = Category::whereNull('user_id')
-            ->orWhere('user_id', $userId)
+            ->orWhere('user_id', Auth::id())
             ->orderBy('name')
             ->get();
 
@@ -121,15 +93,9 @@ class TransactionController extends Controller
      */
     public function update(Request $request, Transaction $transaction)
     {
-        $userId = Auth::id();
-
-        if (!$userId) {
-            return redirect()->route('login');
-        }
-
-        // Authorization check
-        if ($userId !== $transaction->user_id) {
-            abort(403, 'Unauthorized action');
+        // Make sure user can only update their own transactions
+        if ($transaction->user_id !== Auth::id()) {
+            abort(403);
         }
 
         $validated = $request->validate([
@@ -141,7 +107,8 @@ class TransactionController extends Controller
         ]);
 
         $transaction->update($validated);
-        return redirect()->route('transactions.index')->with('success', 'Transaction updated successfully.');
+
+        return redirect()->route('transactions.show', $transaction)->with('success', 'Transaction updated successfully!');
     }
 
     /**
@@ -149,18 +116,13 @@ class TransactionController extends Controller
      */
     public function destroy(Transaction $transaction)
     {
-        $userId = Auth::id();
-
-        if (!$userId) {
-            return redirect()->route('login');
-        }
-
-        // Authorization check
-        if ($userId !== $transaction->user_id) {
-            abort(403, 'Unauthorized action');
+        // Make sure user can only delete their own transactions
+        if ($transaction->user_id !== Auth::id()) {
+            abort(403);
         }
 
         $transaction->delete();
-        return redirect()->route('transactions.index')->with('success', 'Transaction deleted successfully.');
+
+        return redirect()->route('transactions.index')->with('success', 'Transaction deleted successfully!');
     }
 }

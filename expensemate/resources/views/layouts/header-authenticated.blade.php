@@ -19,8 +19,6 @@
                 class="text-gray-600 hover:text-primary transition {{ request()->routeIs('transactions.*') ? 'text-primary font-medium border-b-2 border-primary' : '' }}">Transactions</a>
             <a href="{{ route('categories.index') }}"
                 class="text-gray-600 hover:text-primary transition {{ request()->routeIs('categories.*') ? 'text-primary font-medium border-b-2 border-primary' : '' }}">Categories</a>
-            <a href="{{ route('transactions.create') }}" class="text-gray-600 hover:text-primary transition">Add
-                Transaction</a>
             <a href="{{ route('analytics') }}"
                 class="text-gray-600 hover:text-primary transition {{ request()->routeIs('analytics') ? 'text-primary font-medium border-b-2 border-primary' : '' }}">Analytics</a>
             <a href="{{ route('export') }}" class="text-gray-600 hover:text-primary transition">Export</a>

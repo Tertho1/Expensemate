@@ -1,75 +1,124 @@
 @extends('layouts.app')
 
 @section('content')
-<div class="container mx-auto px-4 py-8 max-w-lg">
-    <div class="bg-white rounded-lg shadow p-6">
-        <div class="flex items-center justify-between mb-6">
-            <h1 class="text-2xl font-bold text-gray-800">Transaction Details</h1>
-            <a href="{{ route('transactions.index') }}" class="text-gray-500 hover:text-gray-700">
-                <svg xmlns="http://www.w3.org/2000/svg" class="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12" />
-                </svg>
-            </a>
-        </div>
-
-        <div class="space-y-4">
-            <div class="flex justify-between items-center pb-4 border-b">
-                <span class="text-gray-600 font-medium">Type:</span>
-                <span class="px-3 py-1 rounded-full text-sm font-medium 
-                    {{ $transaction->type === 'income' ? 'bg-green-100 text-green-800' : 'bg-red-100 text-red-800' }}">
-                    {{ ucfirst($transaction->type) }}
-                </span>
+    <div class="container mx-auto px-4 py-8 max-w-2xl">
+        <div class="bg-white rounded-lg shadow">
+            <!-- Header -->
+            <div class="p-6 border-b border-gray-200">
+                <div class="flex justify-between items-center">
+                    <h1 class="text-2xl font-bold text-gray-800">Transaction Details</h1>
+                    <div class="flex space-x-2">
+                        <a href="{{ route('transactions.edit', $transaction) }}"
+                            class="bg-yellow-500 hover:bg-yellow-600 text-white px-4 py-2 rounded-lg flex items-center">
+                            <svg class="w-4 h-4 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                                    d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z">
+                                </path>
+                            </svg>
+                            Edit
+                        </a>
+                        <a href="{{ route('transactions.index') }}"
+                            class="bg-gray-500 hover:bg-gray-600 text-white px-4 py-2 rounded-lg">
+                            Back to List
+                        </a>
+                    </div>
+                </div>
             </div>
 
-            <div class="flex justify-between items-center pb-4 border-b">
-                <span class="text-gray-600 font-medium">Amount:</span>
-                <span class="text-xl font-bold {{ $transaction->type === 'income' ? 'text-green-600' : 'text-red-600' }}">
-                    {{ $transaction->type === 'income' ? '+' : '-' }}${{ number_format($transaction->amount, 2) }}
-                </span>
-            </div>
+            <!-- Transaction Details -->
+            <div class="p-6">
+                <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
+                    <!-- Type -->
+                    <div>
+                        <label class="block text-sm font-medium text-gray-700 mb-2">Transaction Type</label>
+                        <span
+                            class="inline-flex items-center px-3 py-1 rounded-full text-sm font-medium 
+                                {{ $transaction->type === 'income' ? 'bg-green-100 text-green-800' : 'bg-red-100 text-red-800' }}">
+                            <svg class="w-4 h-4 mr-1" fill="currentColor" viewBox="0 0 20 20">
+                                @if($transaction->type === 'income')
+                                    <path fill-rule="evenodd"
+                                        d="M5.293 9.707a1 1 0 010-1.414l4-4a1 1 0 011.414 0l4 4a1 1 0 01-1.414 1.414L11 7.414V15a1 1 0 11-2 0V7.414L6.707 9.707a1 1 0 01-1.414 0z"
+                                        clip-rule="evenodd" />
+                                @else
+                                    <path fill-rule="evenodd"
+                                        d="M14.707 10.293a1 1 0 010 1.414l-4 4a1 1 0 01-1.414 0l-4-4a1 1 0 111.414-1.414L9 12.586V5a1 1 0 012 0v7.586l2.293-2.293a1 1 0 011.414 0z"
+                                        clip-rule="evenodd" />
+                                @endif
+                            </svg>
+                            {{ ucfirst($transaction->type) }}
+                        </span>
+                    </div>
 
-            <div class="flex justify-between items-center pb-4 border-b">
-                <span class="text-gray-600 font-medium">Date:</span>
-                <span class="text-gray-800">{{ $transaction->date->format('F j, Y') }}</span>
-            </div>
+                    <!-- Amount -->
+                    <div>
+                        <label class="block text-sm font-medium text-gray-700 mb-2">Amount</label>
+                        <div
+                            class="text-3xl font-bold {{ $transaction->type === 'income' ? 'text-green-600' : 'text-red-600' }}">
+                            {{ $transaction->type === 'income' ? '+' : '-' }}${{ number_format($transaction->amount, 2) }}
+                        </div>
+                    </div>
 
-            <div class="flex justify-between items-center pb-4 border-b">
-                <span class="text-gray-600 font-medium">Category:</span>
-                <span class="text-gray-800">{{ $transaction->category->name }}</span>
-            </div>
+                    <!-- Date -->
+                    <div>
+                        <label class="block text-sm font-medium text-gray-700 mb-2">Date</label>
+                        <div class="text-lg text-gray-900">{{ $transaction->date->format('F d, Y') }}</div>
+                        <div class="text-sm text-gray-500">{{ $transaction->date->diffForHumans() }}</div>
+                    </div>
 
-            <div class="flex justify-between items-center pb-4 border-b">
-                <span class="text-gray-600 font-medium">Created:</span>
-                <span class="text-gray-800">{{ $transaction->created_at->format('M j, Y \a\t g:i a') }}</span>
-            </div>
+                    <!-- Category -->
+                    <div>
+                        <label class="block text-sm font-medium text-gray-700 mb-2">Category</label>
+                        <span
+                            class="inline-flex items-center px-3 py-1 rounded-full text-sm font-medium bg-gray-100 text-gray-800">
+                            {{ $transaction->category->name }}
+                        </span>
+                    </div>
+                </div>
 
-            <div class="flex justify-between items-center pb-4">
-                <span class="text-gray-600 font-medium">Last Updated:</span>
-                <span class="text-gray-800">{{ $transaction->updated_at->format('M j, Y \a\t g:i a') }}</span>
-            </div>
-        </div>
+                <!-- Note Section (Only show if note exists) -->
+                @if($transaction->note)
+                    <div class="mt-6 pt-6 border-t border-gray-200">
+                        <label class="block text-sm font-medium text-gray-700 mb-2">Note</label>
+                        <div class="bg-gray-50 rounded-lg p-4">
+                            <p class="text-gray-800 whitespace-pre-wrap">{{ $transaction->note }}</p>
+                        </div>
+                    </div>
+                @endif
 
-        <div class="flex justify-end space-x-3 mt-8">
-            <a href="{{ route('transactions.edit', $transaction) }}" 
-                class="flex items-center px-4 py-2 bg-indigo-500 text-white rounded-lg hover:bg-indigo-600">
-                <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5 mr-1" viewBox="0 0 20 20" fill="currentColor">
-                    <path d="M13.586 3.586a2 2 0 112.828 2.828l-.793.793-2.828-2.828.793-.793zM11.379 5.793L3 14.172V17h2.828l8.38-8.379-2.83-2.828z" />
-                </svg>
-                Edit
-            </a>
-            <form action="{{ route('transactions.destroy', $transaction) }}" method="POST">
-                @csrf
-                @method('DELETE')
-                <button type="submit" 
-                    class="flex items-center px-4 py-2 bg-red-500 text-white rounded-lg hover:bg-red-600"
-                    onclick="return confirm('Are you sure you want to delete this transaction?')">
-                    <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5 mr-1" viewBox="0 0 20 20" fill="currentColor">
-                        <path fill-rule="evenodd" d="M9 2a1 1 0 00-.894.553L7.382 4H4a1 1 0 000 2v10a2 2 0 002 2h8a2 2 0 002-2V6a1 1 0 100-2h-3.382l-.724-1.447A1 1 0 0011 2H9zM7 8a1 1 0 012 0v6a1 1 0 11-2 0V8zm5-1a1 1 0 00-1 1v6a1 1 0 102 0V8a1 1 0 00-1-1z" clip-rule="evenodd" />
-                    </svg>
-                    Delete
-                </button>
-            </form>
+                <!-- Metadata -->
+                <div class="mt-6 pt-6 border-t border-gray-200">
+                    <div class="grid grid-cols-1 md:grid-cols-2 gap-4 text-sm text-gray-500">
+                        <div>
+                            <span class="font-medium">Created:</span>
+                            {{ $transaction->created_at->format('M d, Y \a\t g:i A') }}
+                        </div>
+                        @if($transaction->updated_at != $transaction->created_at)
+                            <div>
+                                <span class="font-medium">Last Updated:</span>
+                                {{ $transaction->updated_at->format('M d, Y \a\t g:i A') }}
+                            </div>
+                        @endif
+                    </div>
+                </div>
+
+                <!-- Action Buttons -->
+                <div class="mt-6 pt-6 border-t border-gray-200 flex justify-between">
+                    <form action="{{ route('transactions.destroy', $transaction) }}" method="POST"
+                        onsubmit="return confirm('Are you sure you want to delete this transaction? This action cannot be undone.')">
+                        @csrf
+                        @method('DELETE')
+                        <button type="submit"
+                            class="bg-red-500 hover:bg-red-600 text-white px-4 py-2 rounded-lg flex items-center">
+                            <svg class="w-4 h-4 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                                    d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16">
+                                </path>
+                            </svg>
+                            Delete Transaction
+                        </button>
+                    </form>
+                </div>
+            </div>
         </div>
     </div>
-</div>
 @endsection

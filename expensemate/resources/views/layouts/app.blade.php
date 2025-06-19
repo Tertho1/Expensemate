@@ -1,5 +1,6 @@
 <!DOCTYPE html>
 <html lang="{{ str_replace('_', '-', app()->getLocale()) }}">
+
 <head>
     <meta charset="utf-8">
     <meta name="viewport" content="width=device-width, initial-scale=1">
@@ -13,7 +14,7 @@
 
     <!-- Scripts -->
     @vite(['resources/css/app.css', 'resources/js/app.js'])
-    
+
     <!-- Tailwind CSS -->
     <script src="https://cdn.tailwindcss.com"></script>
     <script>
@@ -32,13 +33,16 @@
         }
     </script>
 </head>
+
 <body class="font-inter bg-light min-h-screen flex flex-col">
     @include('layouts.header')
-    
+
     <main class="flex-grow">
         @yield('content')
     </main>
-    
+
     @include('layouts.footer')
+    @stack('scripts')
 </body>
+
 </html>
