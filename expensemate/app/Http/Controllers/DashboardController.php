@@ -14,7 +14,11 @@ class DashboardController extends Controller
     {
         $userId = Auth::id();
 
-        // Initialize with default values in case no transactions exist
+        if (!$userId) {
+            return redirect()->route('login');
+        }
+
+        // Initialize with default values
         $monthlyIncome = 0;
         $monthlyExpense = 0;
         $totalIncome = 0;
@@ -32,22 +36,22 @@ class DashboardController extends Controller
         $monthlyIncome = Transaction::where('user_id', $userId)
             ->where('type', 'income')
             ->whereBetween('date', [$startOfMonth, $endOfMonth])
-            ->sum('amount');
+            ->sum('amount') ?? 0;
 
         // Get monthly expense
         $monthlyExpense = Transaction::where('user_id', $userId)
             ->where('type', 'expense')
             ->whereBetween('date', [$startOfMonth, $endOfMonth])
-            ->sum('amount');
+            ->sum('amount') ?? 0;
 
         // Get current balance (all time)
         $totalIncome = Transaction::where('user_id', $userId)
             ->where('type', 'income')
-            ->sum('amount');
+            ->sum('amount') ?? 0;
 
         $totalExpense = Transaction::where('user_id', $userId)
             ->where('type', 'expense')
-            ->sum('amount');
+            ->sum('amount') ?? 0;
 
         $balance = $totalIncome - $totalExpense;
 
@@ -55,10 +59,11 @@ class DashboardController extends Controller
         $recentTransactions = Transaction::with('category')
             ->where('user_id', $userId)
             ->orderBy('date', 'desc')
+            ->orderBy('created_at', 'desc')
             ->limit(5)
             ->get();
 
-        // Calculate month-over-month changes (optional)
+        // Calculate month-over-month changes
         $lastMonth = Carbon::now()->subMonth();
         $startOfLastMonth = $lastMonth->copy()->startOfMonth();
         $endOfLastMonth = $lastMonth->copy()->endOfMonth();
@@ -66,12 +71,12 @@ class DashboardController extends Controller
         $lastMonthIncome = Transaction::where('user_id', $userId)
             ->where('type', 'income')
             ->whereBetween('date', [$startOfLastMonth, $endOfLastMonth])
-            ->sum('amount');
+            ->sum('amount') ?? 0;
 
         $lastMonthExpense = Transaction::where('user_id', $userId)
             ->where('type', 'expense')
             ->whereBetween('date', [$startOfLastMonth, $endOfLastMonth])
-            ->sum('amount');
+            ->sum('amount') ?? 0;
 
         $incomeChange = $lastMonthIncome > 0
             ? (($monthlyIncome - $lastMonthIncome) / $lastMonthIncome) * 100
