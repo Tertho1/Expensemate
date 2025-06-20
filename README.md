@@ -79,6 +79,7 @@ ExpenseMate is a modern, intuitive web application designed to help individuals 
     DB_CONNECTION=sqlite
     DB_DATABASE=/path/to/database/database.sqlite
     ```
+    You can use mysql also
 
 6. **Run database migrations and seeders**
 
