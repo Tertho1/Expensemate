@@ -1,5 +1,5 @@
 @extends('layouts.app')
-
+@section('title', 'Analytics')
 @section('content')
     <div class="container mx-auto px-4 py-8" data-chart-data="{{ json_encode($chartData) }}"
         data-has-expense-data="{{ $expensesByCategory->count() > 0 ? 'true' : 'false' }}"
