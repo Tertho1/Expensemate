@@ -21,6 +21,21 @@ class AnalyticsController extends Controller
         $startDate = $request->input('start_date', Carbon::now()->startOfMonth()->format('Y-m-d'));
         $endDate = $request->input('end_date', Carbon::now()->endOfMonth()->format('Y-m-d'));
 
+        // DEBUG: Check the date range and user
+        Log::info('Analytics Debug Start:', [
+            'userId' => $userId,
+            'startDate' => $startDate,
+            'endDate' => $endDate,
+            'requestParams' => $request->all()
+        ]);
+
+        // DEBUG: Check if we have any transactions at all for this user
+        $allUserTransactions = Transaction::where('user_id', $userId)->get();
+        Log::info('All User Transactions:', [
+            'total_count' => $allUserTransactions->count(),
+            'transactions' => $allUserTransactions->toArray()
+        ]);
+
         // Initialize empty collections
         $expensesByCategory = collect();
         $incomeByCategory = collect();
@@ -57,8 +72,20 @@ class AnalyticsController extends Controller
                 ->orderBy('date')
                 ->get();
 
+            // DEBUG: Check what we got from the query
+            Log::info('Daily Transactions Raw Query Result:', [
+                'count' => $dailyTransactionsRaw->count(),
+                'data' => $dailyTransactionsRaw->toArray()
+            ]);
+
             // Group by date for easier processing
             $dailyTransactions = $dailyTransactionsRaw->groupBy('date');
+
+            // DEBUG: Check grouped result
+            Log::info('Daily Transactions After Grouping:', [
+                'grouped_keys' => $dailyTransactions->keys()->toArray(),
+                'grouped_count' => $dailyTransactions->count()
+            ]);
 
             // Calculate totals for the selected period
             $totalIncome = Transaction::where('user_id', $userId)
@@ -70,6 +97,12 @@ class AnalyticsController extends Controller
                 ->where('type', 'expense')
                 ->whereBetween('date', [$startDate, $endDate])
                 ->sum('amount');
+
+            // DEBUG: Check totals
+            Log::info('Calculated Totals:', [
+                'totalIncome' => $totalIncome,
+                'totalExpense' => $totalExpense
+            ]);
 
             // Calculate actual transaction count for the selected period
             $totalTransactionCount = Transaction::where('user_id', $userId)
@@ -159,39 +192,32 @@ class AnalyticsController extends Controller
             $overallColors[] = '#EF4444';
         }
 
-        // FIXED: Prepare daily trend data with complete date range
-        $dateRange = [];
-        $currentDate = Carbon::parse($startDate);
-        $endDateCarbon = Carbon::parse($endDate);
+        // ENHANCED: Determine if we should use monthly or daily aggregation
+        $startCarbon = Carbon::parse($startDate);
+        $endCarbon = Carbon::parse($endDate);
+        $monthsDiff = $startCarbon->diffInMonths($endCarbon);
+        $useMonthlyAggregation = $monthsDiff > 6;
 
-        while ($currentDate <= $endDateCarbon) {
-            $dateRange[] = $currentDate->format('Y-m-d');
-            $currentDate->addDay();
-        }
-
-        $dailyIncomeData = [];
-        $dailyExpenseData = [];
-        $trendLabels = [];
-
-        foreach ($dateRange as $date) {
-            $dayData = $dailyTransactions->get($date, collect());
-
-            // Get income and expense for this specific day
-            $dailyIncome = $dayData->where('type', 'income')->sum('daily_total') ?: 0;
-            $dailyExpense = $dayData->where('type', 'expense')->sum('daily_total') ?: 0;
-
-            $dailyIncomeData[] = (float) $dailyIncome;
-            $dailyExpenseData[] = (float) $dailyExpense;
-            $trendLabels[] = Carbon::parse($date)->format('M j'); // Short format for labels
-        }
-
-        // Log for debugging
-        Log::info('Daily Trend Data:', [
-            'dateRange' => $dateRange,
-            'dailyIncomeData' => $dailyIncomeData,
-            'dailyExpenseData' => $dailyExpenseData,
-            'trendLabels' => $trendLabels
+        Log::info('Chart Aggregation Decision:', [
+            'startDate' => $startDate,
+            'endDate' => $endDate,
+            'monthsDiff' => $monthsDiff,
+            'useMonthlyAggregation' => $useMonthlyAggregation
         ]);
+
+        // Convert grouped daily transactions to use date-only keys
+        $dailyTransactionsByDate = collect();
+        foreach ($dailyTransactions as $dateTimeKey => $transactions) {
+            $dateOnly = Carbon::parse($dateTimeKey)->format('Y-m-d');
+            $dailyTransactionsByDate[$dateOnly] = $transactions;
+        }
+
+        // ENHANCED: Choose aggregation method based on time period
+        if ($useMonthlyAggregation) {
+            $trendData = $this->prepareMonthlyTrendData($dailyTransactionsByDate, $startDate, $endDate);
+        } else {
+            $trendData = $this->prepareDailyTrendData($dailyTransactionsByDate, $startDate, $endDate);
+        }
 
         // Prepare category comparison bar chart data
         $allCategories = $expensesByCategory->pluck('name')
@@ -228,15 +254,129 @@ class AnalyticsController extends Controller
                 'colors' => array_slice($incomeColors, 0, count($incomeLabels))
             ],
             'trend' => [
-                'labels' => $trendLabels,
-                'income' => $dailyIncomeData,
-                'expense' => $dailyExpenseData
+                'labels' => $trendData['labels'],
+                'income' => $trendData['income'],
+                'expense' => $trendData['expense'],
+                'aggregationType' => $useMonthlyAggregation ? 'monthly' : 'daily'
             ],
             'categoryBar' => [
                 'labels' => $allCategories,
                 'income' => $categoryIncomeData,
                 'expense' => $categoryExpenseData
             ]
+        ];
+    }
+
+    // NEW: Prepare daily trend data (for periods ≤ 6 months)
+    private function prepareDailyTrendData($dailyTransactionsByDate, $startDate, $endDate)
+    {
+        $dateRange = [];
+        $currentDate = Carbon::parse($startDate);
+        $endDateCarbon = Carbon::parse($endDate);
+
+        while ($currentDate <= $endDateCarbon) {
+            $dateRange[] = $currentDate->format('Y-m-d');
+            $currentDate->addDay();
+        }
+
+        $dailyIncomeData = [];
+        $dailyExpenseData = [];
+        $trendLabels = [];
+
+        foreach ($dateRange as $date) {
+            $dayData = $dailyTransactionsByDate->get($date, collect());
+
+            $dailyIncome = 0;
+            $dailyExpense = 0;
+
+            foreach ($dayData as $transaction) {
+                if ($transaction->type === 'income') {
+                    $dailyIncome += (float) $transaction->daily_total;
+                } elseif ($transaction->type === 'expense') {
+                    $dailyExpense += (float) $transaction->daily_total;
+                }
+            }
+
+            $dailyIncomeData[] = (float) $dailyIncome;
+            $dailyExpenseData[] = (float) $dailyExpense;
+            $trendLabels[] = Carbon::parse($date)->format('M j'); // "Jun 5"
+        }
+
+        Log::info('Daily Trend Data Prepared:', [
+            'totalDays' => count($dateRange),
+            'nonZeroIncome' => count(array_filter($dailyIncomeData)),
+            'nonZeroExpense' => count(array_filter($dailyExpenseData)),
+            'incomeSum' => array_sum($dailyIncomeData),
+            'expenseSum' => array_sum($dailyExpenseData)
+        ]);
+
+        return [
+            'labels' => $trendLabels,
+            'income' => $dailyIncomeData,
+            'expense' => $dailyExpenseData
+        ];
+    }
+
+    // NEW: Prepare monthly trend data (for periods > 6 months)
+    private function prepareMonthlyTrendData($dailyTransactionsByDate, $startDate, $endDate)
+    {
+        $startCarbon = Carbon::parse($startDate);
+        $endCarbon = Carbon::parse($endDate);
+
+        // Create month range
+        $monthRange = [];
+        $currentMonth = $startCarbon->copy()->startOfMonth();
+
+        while ($currentMonth <= $endCarbon) {
+            $monthKey = $currentMonth->format('Y-m');
+            $monthRange[$monthKey] = [
+                'income' => 0,
+                'expense' => 0,
+                'label' => $currentMonth->format('M Y'), // "Jun 2025"
+                'start' => $currentMonth->copy()->startOfMonth()->format('Y-m-d'),
+                'end' => $currentMonth->copy()->endOfMonth()->format('Y-m-d')
+            ];
+            $currentMonth->addMonth();
+        }
+
+        // Aggregate daily data into monthly
+        foreach ($dailyTransactionsByDate as $date => $dayTransactions) {
+            $monthKey = Carbon::parse($date)->format('Y-m');
+
+            if (isset($monthRange[$monthKey])) {
+                foreach ($dayTransactions as $transaction) {
+                    if ($transaction->type === 'income') {
+                        $monthRange[$monthKey]['income'] += (float) $transaction->daily_total;
+                    } elseif ($transaction->type === 'expense') {
+                        $monthRange[$monthKey]['expense'] += (float) $transaction->daily_total;
+                    }
+                }
+            }
+        }
+
+        $trendLabels = [];
+        $monthlyIncomeData = [];
+        $monthlyExpenseData = [];
+
+        foreach ($monthRange as $month) {
+            $trendLabels[] = $month['label'];
+            $monthlyIncomeData[] = (float) $month['income'];
+            $monthlyExpenseData[] = (float) $month['expense'];
+        }
+
+        Log::info('Monthly Trend Data Prepared:', [
+            'totalMonths' => count($monthRange),
+            'nonZeroIncome' => count(array_filter($monthlyIncomeData)),
+            'nonZeroExpense' => count(array_filter($monthlyExpenseData)),
+            'incomeSum' => array_sum($monthlyIncomeData),
+            'expenseSum' => array_sum($monthlyExpenseData),
+            'monthLabels' => $trendLabels
+        ]);
+
+        return [
+            'labels' => $trendLabels,
+            'income' => $monthlyIncomeData,
+            'expense' => $monthlyExpenseData
         ];
     }
 }

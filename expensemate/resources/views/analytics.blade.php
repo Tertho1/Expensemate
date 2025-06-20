@@ -138,7 +138,8 @@
         <!-- Daily Trend Chart (Enhanced Title) -->
         <div class="bg-white rounded-lg shadow p-6 mb-8">
             <h3 class="text-lg font-semibold text-gray-800 mb-2">Daily Financial Trend</h3>
-            <p class="text-sm text-gray-600 mb-4">Track your daily income and expenses to identify spending patterns</p>
+            <p class="text-sm text-gray-600 mb-4">Track your daily income and expenses to identify spending patterns
+            </p>
             <div style="height: 400px;">
                 <canvas id="trendChart"></canvas>
             </div>
@@ -499,143 +500,191 @@
 
         function createTrendChart(data) {
             const ctx = document.getElementById('trendChart');
-            if (!ctx || !data || !data.labels) {
-                console.log('No trend data available');
-                return;
+            if (!ctx) {
+                console.error('Trend chart canvas not found');
+                return null;
             }
 
             console.log('Creating trend chart with data:', data);
 
-            // Calculate proper min/max values for BDT scaling
+            // Handle empty data
+            if (!data.labels || data.labels.length === 0) {
+                this.showNoDataMessage('trendChart', 'No trend data available for the selected period');
+                return null;
+            }
+
+            // ENHANCED: Calculate Y-axis scale with +1000 buffer
             const allValues = [...(data.income || []), ...(data.expense || [])];
             const maxValue = Math.max(...allValues, 0);
 
-            // Set appropriate Y-axis limits with BDT ranges
+            // Add 1000 to the maximum value as requested
+            const bufferedMax = maxValue + 1000;
+
+            // Determine appropriate step size and final max
             let yAxisMax, stepSize;
 
-            if (maxValue <= 100) {
-                yAxisMax = 100;
-                stepSize = 10;
-            } else if (maxValue <= 1000) {
-                yAxisMax = Math.ceil(maxValue / 100) * 100;
+            if (bufferedMax <= 1000) {
+                yAxisMax = Math.ceil(bufferedMax / 100) * 100; // Round up to nearest 100
                 stepSize = 100;
-            } else if (maxValue <= 10000) {
-                yAxisMax = Math.ceil(maxValue / 1000) * 1000;
+            } else if (bufferedMax <= 5000) {
+                yAxisMax = Math.ceil(bufferedMax / 500) * 500; // Round up to nearest 500
+                stepSize = 500;
+            } else if (bufferedMax <= 10000) {
+                yAxisMax = Math.ceil(bufferedMax / 1000) * 1000; // Round up to nearest 1000
                 stepSize = 1000;
-            } else {
-                yAxisMax = Math.ceil(maxValue / 10000) * 10000;
+            } else if (bufferedMax <= 50000) {
+                yAxisMax = Math.ceil(bufferedMax / 5000) * 5000; // Round up to nearest 5000
                 stepSize = 5000;
+            } else {
+                yAxisMax = Math.ceil(bufferedMax / 10000) * 10000; // Round up to nearest 10000
+                stepSize = 10000;
             }
 
-            try {
-                new Chart(ctx, {
-                    type: 'line',
-                    data: {
-                        labels: data.labels,
-                        datasets: [{
-                            label: 'Income',
-                            data: data.income || [],
-                            borderColor: '#22C55E',
-                            backgroundColor: 'rgba(34, 197, 94, 0.1)',
-                            fill: false,
-                            tension: 0.4,
-                            pointRadius: 5,
-                            pointHoverRadius: 8,
-                            pointBackgroundColor: '#22C55E',
-                            pointBorderColor: '#ffffff',
-                            pointBorderWidth: 2
-                        }, {
-                            label: 'Expenses',
-                            data: data.expense || [],
-                            borderColor: '#EF4444',
-                            backgroundColor: 'rgba(239, 68, 68, 0.1)',
-                            fill: false,
-                            tension: 0.4,
-                            pointRadius: 5,
-                            pointHoverRadius: 8,
-                            pointBackgroundColor: '#EF4444',
-                            pointBorderColor: '#ffffff',
-                            pointBorderWidth: 2
-                        }]
-                    },
-                    options: {
-                        responsive: true,
-                        maintainAspectRatio: false,
-                        scales: {
-                            y: {
-                                beginAtZero: true,
-                                min: 0,
-                                max: yAxisMax,
-                                ticks: {
-                                    stepSize: stepSize,
-                                    callback: function (value) {
-                                        return '৳' + value.toLocaleString();
-                                    }
-                                },
-                                grid: {
-                                    display: true,
-                                    color: 'rgba(0, 0, 0, 0.1)'
-                                },
-                                title: {
-                                    display: true,
-                                    text: 'Amount (BDT)',
-                                    font: {
-                                        size: 12,
-                                        weight: 'bold'
-                                    }
+            console.log('Y-axis scaling:', {
+                maxValue: maxValue,
+                bufferedMax: bufferedMax,
+                yAxisMax: yAxisMax,
+                stepSize: stepSize
+            });
+
+            // Determine chart title based on aggregation type
+            const isMonthly = data.aggregationType === 'monthly';
+            const chartTitle = isMonthly ? 'Monthly Income vs Expenses Trend' : 'Daily Income vs Expenses Trend';
+            const xAxisTitle = isMonthly ? 'Month' : 'Date';
+
+            return new Chart(ctx, {
+                type: 'line',
+                data: {
+                    labels: data.labels,
+                    datasets: [{
+                        label: 'Income',
+                        data: data.income || [],
+                        borderColor: '#22C55E',
+                        backgroundColor: 'rgba(34, 197, 94, 0.1)',
+                        fill: false,
+                        tension: 0.4,
+                        pointRadius: isMonthly ? 6 : 4, // Larger points for monthly view
+                        pointHoverRadius: isMonthly ? 8 : 6,
+                        pointBackgroundColor: '#22C55E',
+                        pointBorderColor: '#ffffff',
+                        pointBorderWidth: 2,
+                        borderWidth: 3
+                    }, {
+                        label: 'Expenses',
+                        data: data.expense || [],
+                        borderColor: '#EF4444',
+                        backgroundColor: 'rgba(239, 68, 68, 0.1)',
+                        fill: false,
+                        tension: 0.4,
+                        pointRadius: isMonthly ? 6 : 4, // Larger points for monthly view
+                        pointHoverRadius: isMonthly ? 8 : 6,
+                        pointBackgroundColor: '#EF4444',
+                        pointBorderColor: '#ffffff',
+                        pointBorderWidth: 2,
+                        borderWidth: 3
+                    }]
+                },
+                options: {
+                    responsive: true,
+                    maintainAspectRatio: false,
+                    scales: {
+                        y: {
+                            beginAtZero: true,
+                            min: 0,
+                            max: yAxisMax, // ENHANCED: Now includes +1000 buffer
+                            ticks: {
+                                stepSize: stepSize,
+                                callback: function (value) {
+                                    return '৳' + value.toLocaleString();
                                 }
                             },
-                            x: {
-                                grid: {
-                                    display: false
-                                },
-                                title: {
-                                    display: true,
-                                    text: 'Date',
-                                    font: {
-                                        size: 12,
-                                        weight: 'bold'
-                                    }
-                                }
-                            }
-                        },
-                        plugins: {
-                            legend: {
-                                position: 'top',
-                            },
-                            tooltip: {
-                                mode: 'index',
-                                intersect: false,
-                                callbacks: {
-                                    label: function (context) {
-                                        return `${context.dataset.label}: ৳${context.raw.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;
-                                    }
-                                }
+                            grid: {
+                                display: true,
+                                color: 'rgba(0, 0, 0, 0.1)'
                             },
                             title: {
                                 display: true,
-                                text: 'Daily Income vs Expenses Trend',
+                                text: 'Amount (BDT)',
                                 font: {
-                                    size: 14,
+                                    size: 12,
                                     weight: 'bold'
                                 }
                             }
                         },
-                        interaction: {
-                            mode: 'nearest',
-                            axis: 'x',
-                            intersect: false
-                        },
-                        animation: {
-                            duration: 1000,
-                            easing: 'easeInOutQuart'
+                        x: {
+                            grid: {
+                                display: false
+                            },
+                            title: {
+                                display: true,
+                                text: xAxisTitle, // ENHANCED: Changes based on aggregation
+                                font: {
+                                    size: 12,
+                                    weight: 'bold'
+                                }
+                            },
+                            ticks: {
+                                // FIXED: Remove maxTicksLimit to show all labels
+                                // maxTicksLimit: isMonthly ? 12 : 20, // REMOVED THIS LINE
+
+                                // Instead, use smart rotation and font sizing based on data length
+                                maxRotation: data.labels.length > 15 ? 45 : 0, // Rotate if many labels
+                                minRotation: 0,
+                                font: {
+                                    size: data.labels.length > 20 ? 9 : (data.labels.length > 10 ? 10 : 11)
+                                },
+                                // Auto-skip only if there are too many labels (more than 31)
+                                autoSkip: data.labels.length > 31,
+                                autoSkipPadding: 5
+                            }
                         }
+                    },
+                    plugins: {
+                        legend: {
+                            position: 'top',
+                            labels: {
+                                usePointStyle: true,
+                                padding: 20
+                            }
+                        },
+                        tooltip: {
+                            mode: 'index',
+                            intersect: false,
+                            callbacks: {
+                                label: function (context) {
+                                    return `${context.dataset.label}: ৳${context.raw.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;
+                                },
+                                footer: function (tooltipItems) {
+                                    let income = 0, expense = 0;
+                                    tooltipItems.forEach(item => {
+                                        if (item.dataset.label === 'Income') income = item.raw;
+                                        if (item.dataset.label === 'Expenses') expense = item.raw;
+                                    });
+                                    const net = income - expense;
+                                    return 'Net: ৳' + net.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+                                }
+                            }
+                        },
+                        title: {
+                            display: true,
+                            text: chartTitle, // ENHANCED: Dynamic title
+                            font: {
+                                size: 14,
+                                weight: 'bold'
+                            }
+                        }
+                    },
+                    interaction: {
+                        mode: 'nearest',
+                        axis: 'x',
+                        intersect: false
+                    },
+                    animation: {
+                        duration: 1000,
+                        easing: 'easeInOutQuart'
                     }
-                });
-                console.log('Trend chart created successfully');
-            } catch (error) {
-                console.error('Error creating trend chart:', error);
-            }
+                }
+            });
         }
 
         function createCategoryBarChart(data) {
