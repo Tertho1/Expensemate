@@ -1,7 +1,10 @@
 @extends('layouts.app')
 
 @section('content')
-    <div class="container mx-auto px-4 py-8">
+    <div class="container mx-auto px-4 py-8" data-chart-data="{{ json_encode($chartData) }}"
+        data-has-expense-data="{{ $expensesByCategory->count() > 0 ? 'true' : 'false' }}"
+        data-has-income-data="{{ $incomeByCategory->count() > 0 ? 'true' : 'false' }}">
+
         <div class="mb-8">
             <h1 class="text-3xl font-bold text-gray-800 mb-2">Analytics Dashboard</h1>
             <p class="text-gray-600">Insights into your financial patterns and spending habits</p>
@@ -26,13 +29,13 @@
             </form>
         </div>
 
-        <!-- Summary Cards -->
+        <!-- Summary Cards (Updated to BDT) -->
         <div class="grid grid-cols-1 md:grid-cols-3 gap-6 mb-8">
             <div class="bg-white rounded-lg shadow p-6">
                 <div class="flex items-center justify-between">
                     <div>
                         <p class="text-sm font-medium text-gray-600">Total Income</p>
-                        <p class="text-2xl font-bold text-green-600">${{ number_format($totalIncome, 2) }}</p>
+                        <p class="text-2xl font-bold text-green-600">৳{{ number_format($totalIncome, 2) }}</p>
                     </div>
                     <div class="bg-green-100 p-3 rounded-lg">
                         <svg class="w-6 h-6 text-green-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -47,7 +50,7 @@
                 <div class="flex items-center justify-between">
                     <div>
                         <p class="text-sm font-medium text-gray-600">Total Expenses</p>
-                        <p class="text-2xl font-bold text-red-600">${{ number_format($totalExpense, 2) }}</p>
+                        <p class="text-2xl font-bold text-red-600">৳{{ number_format($totalExpense, 2) }}</p>
                     </div>
                     <div class="bg-red-100 p-3 rounded-lg">
                         <svg class="w-6 h-6 text-red-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -63,7 +66,7 @@
                     <div>
                         <p class="text-sm font-medium text-gray-600">Net Balance</p>
                         <p class="text-2xl font-bold {{ $balance >= 0 ? 'text-blue-600' : 'text-red-600' }}">
-                            ${{ number_format($balance, 2) }}
+                            ৳{{ number_format($balance, 2) }}
                         </p>
                     </div>
                     <div class="bg-blue-100 p-3 rounded-lg">
@@ -78,12 +81,20 @@
         </div>
 
         <!-- Charts Section -->
-        <div class="grid grid-cols-1 xl:grid-cols-2 gap-8 mb-8">
-            <!-- Pie Charts -->
+        <div class="grid grid-cols-1 lg:grid-cols-3 gap-8 mb-8">
+            <!-- Overall Transaction Distribution -->
             <div class="bg-white rounded-lg shadow p-6">
-                <h3 class="text-lg font-semibold text-gray-800 mb-4">Expense Distribution</h3>
+                <h3 class="text-lg font-semibold text-gray-800 mb-4">Income vs Expenses</h3>
+                <div style="height: 300px;">
+                    <canvas id="overallPieChart"></canvas>
+                </div>
+            </div>
+
+            <!-- Expense Distribution -->
+            <div class="bg-white rounded-lg shadow p-6">
+                <h3 class="text-lg font-semibold text-gray-800 mb-4">Expense Categories</h3>
                 @if($expensesByCategory->count() > 0)
-                    <div style="height: 400px;">
+                    <div style="height: 300px;">
                         <canvas id="expensePieChart"></canvas>
                     </div>
                 @else
@@ -95,16 +106,17 @@
                                     d="M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2-2v6a2 2 0 002 2h2a2 2 0 002-2zm0 0V9a2 2 0 012-2h2a2 2 0 012 2v10m-6 0a2 2 0 002 2h2a2 2 0 002-2m0 0V5a2 2 0 012-2h2a2 2 0 012 2v14a2 2 0 01-2 2h-2a2 2 0 01-2-2z">
                                 </path>
                             </svg>
-                            <p>No expense data for this period</p>
+                            <p>No expense data</p>
                         </div>
                     </div>
                 @endif
             </div>
 
+            <!-- Income Distribution -->
             <div class="bg-white rounded-lg shadow p-6">
-                <h3 class="text-lg font-semibold text-gray-800 mb-4">Income Distribution</h3>
+                <h3 class="text-lg font-semibold text-gray-800 mb-4">Income Categories</h3>
                 @if($incomeByCategory->count() > 0)
-                    <div style="height: 400px;">
+                    <div style="height: 300px;">
                         <canvas id="incomePieChart"></canvas>
                     </div>
                 @else
@@ -116,16 +128,17 @@
                                     d="M12 8c-1.657 0-3 .895-3 2s1.343 2 3 2 3 .895 3 2-1.343 2-3 2m0-8c1.11 0 2.08.402 2.599 1M12 8V7m0 1v8m0 0v1m0-1c-1.11 0-2.08-.402-2.599-1">
                                 </path>
                             </svg>
-                            <p>No income data for this period</p>
+                            <p>No income data</p>
                         </div>
                     </div>
                 @endif
             </div>
         </div>
 
-        <!-- Daily Trend Chart -->
+        <!-- Daily Trend Chart (Enhanced Title) -->
         <div class="bg-white rounded-lg shadow p-6 mb-8">
-            <h3 class="text-lg font-semibold text-gray-800 mb-4">Daily Trend</h3>
+            <h3 class="text-lg font-semibold text-gray-800 mb-2">Daily Financial Trend</h3>
+            <p class="text-sm text-gray-600 mb-4">Track your daily income and expenses to identify spending patterns</p>
             <div style="height: 400px;">
                 <canvas id="trendChart"></canvas>
             </div>
@@ -139,7 +152,7 @@
             </div>
         </div>
 
-        <!-- Category Breakdown (Existing Progress Bars) -->
+        <!-- Category Breakdown (Progress Bars) -->
         <div class="grid grid-cols-1 lg:grid-cols-2 gap-8 mb-8">
             <!-- Expenses by Category -->
             <div class="bg-white rounded-lg shadow p-6">
@@ -150,7 +163,7 @@
                             <div class="category-item">
                                 <div class="flex items-center justify-between">
                                     <span class="text-gray-700">{{ $expense->name }}</span>
-                                    <span class="font-semibold text-red-600">${{ number_format($expense->total, 2) }}</span>
+                                    <span class="font-semibold text-red-600">৳{{ number_format($expense->total, 2) }}</span>
                                 </div>
                                 <div class="w-full bg-gray-200 rounded-full h-2">
                                     <div class="bg-red-500 h-2 rounded-full progress-bar"
@@ -181,7 +194,7 @@
                             <div class="category-item">
                                 <div class="flex items-center justify-between">
                                     <span class="text-gray-700">{{ $income->name }}</span>
-                                    <span class="font-semibold text-green-600">${{ number_format($income->total, 2) }}</span>
+                                    <span class="font-semibold text-green-600">৳{{ number_format($income->total, 2) }}</span>
                                 </div>
                                 <div class="w-full bg-gray-200 rounded-full h-2">
                                     <div class="bg-green-500 h-2 rounded-full progress-bar"
@@ -214,41 +227,497 @@
                 </div>
                 <div class="text-center p-4 bg-gray-50 rounded-lg">
                     <p class="text-sm text-gray-600">Average Transaction</p>
-                    <p class="text-2xl font-bold text-gray-900">${{ number_format($averageTransaction, 2) }}</p>
+                    <p class="text-2xl font-bold text-gray-900">৳{{ number_format($averageTransaction, 2) }}</p>
                 </div>
                 <div class="text-center p-4 bg-gray-50 rounded-lg">
                     <p class="text-sm text-gray-600">Savings Rate</p>
                     <p class="text-2xl font-bold {{ $balance >= 0 ? 'text-green-600' : 'text-red-600' }}">
-                        @php
-                            $savingsRate = $totalIncome > 0 ? (($totalIncome - $totalExpense) / $totalIncome) * 100 : 0;
-                        @endphp
-                        {{ number_format($savingsRate, 1) }}%
+                        {{ number_format($totalIncome > 0 ? (($totalIncome - $totalExpense) / $totalIncome) * 100 : 0, 1) }}%
                     </p>
                 </div>
             </div>
         </div>
     </div>
+@endsection
 
-    <!-- Chart.js CDN -->
-    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+@push('scripts')
+    <!-- Chart.js CDN - Use UMD version (no ES6 modules) -->
+    <script src="https://cdn.jsdelivr.net/npm/chart.js@3.9.1/dist/chart.min.js"></script>
 
-    <!-- SAFE Chart Data Transfer -->
+    <!-- FIXED: Safe Chart Data Transfer -->
+    <script id="chart-data" type="application/json">{!! json_encode($chartData ?? []) !!}</script>
+
     <script>
-        // Safe data transfer with error handling
-        try {
-            window.chartData = {!! json_encode($chartData ?? []) !!};
-            console.log('Chart data loaded:', window.chartData);
-        } catch (error) {
-            console.error('Error parsing chart data:', error);
-            window.chartData = {
-                expensePie: { labels: [], data: [], colors: [] },
-                incomePie: { labels: [], data: [], colors: [] },
-                trend: { labels: [], income: [], expense: [] },
-                categoryBar: { labels: [], income: [], expense: [] }
-            };
+        // Wait for DOM and Chart.js to load
+        document.addEventListener('DOMContentLoaded', function () {
+            // Add additional delay to ensure Chart.js is fully loaded
+            setTimeout(function () {
+                // Check if Chart.js is available
+                if (typeof Chart === 'undefined') {
+                    console.error('Chart.js not loaded! Charts will not work.');
+                    return;
+                }
+
+                console.log('Chart.js loaded successfully, version:', Chart.version);
+
+                // Safe data retrieval from script tag
+                let chartData;
+                try {
+                    const chartDataElement = document.getElementById('chart-data');
+                    chartData = JSON.parse(chartDataElement.textContent);
+                    console.log('Chart data loaded successfully:', chartData);
+                } catch (error) {
+                    console.error('Error parsing chart data:', error);
+                    chartData = {
+                        overallPie: { labels: [], data: [], colors: [] },
+                        expensePie: { labels: [], data: [], colors: [] },
+                        incomePie: { labels: [], data: [], colors: [] },
+                        trend: { labels: [], income: [], expense: [] },
+                        categoryBar: { labels: [], income: [], expense: [] }
+                    };
+                }
+
+                // Fallback if data is empty
+                if (!chartData || typeof chartData !== 'object') {
+                    chartData = {
+                        overallPie: { labels: [], data: [], colors: [] },
+                        expensePie: { labels: [], data: [], colors: [] },
+                        incomePie: { labels: [], data: [], colors: [] },
+                        trend: { labels: [], income: [], expense: [] },
+                        categoryBar: { labels: [], income: [], expense: [] }
+                    };
+                }
+
+                // Set global chart data
+                window.chartData = chartData;
+
+                // Initialize charts directly here instead of relying on analytics.js
+                const hasExpenseData = {{ $expensesByCategory->count() > 0 ? 'true' : 'false' }};
+                const hasIncomeData = {{ $incomeByCategory->count() > 0 ? 'true' : 'false' }};
+
+                initializeAllCharts(chartData, hasExpenseData, hasIncomeData);
+
+            }, 300); // 300ms delay to ensure Chart.js is ready
+        });
+
+        // Initialize all charts function
+        function initializeAllCharts(chartData, hasExpenseData, hasIncomeData) {
+            console.log('Initializing all charts...');
+
+            // Initialize Overall Pie Chart
+            createOverallPieChart(chartData.overallPie);
+
+            // Initialize Expense Pie Chart
+            if (hasExpenseData && chartData.expensePie.labels.length > 0) {
+                createExpensePieChart(chartData.expensePie);
+            }
+
+            // Initialize Income Pie Chart
+            if (hasIncomeData && chartData.incomePie.labels.length > 0) {
+                createIncomePieChart(chartData.incomePie);
+            }
+
+            // Initialize Trend Chart
+            createTrendChart(chartData.trend);
+
+            // Initialize Category Bar Chart
+            createCategoryBarChart(chartData.categoryBar);
+
+            // Initialize progress bars
+            initializeProgressBars();
+        }
+
+        // Chart creation functions
+        function createOverallPieChart(data) {
+            const ctx = document.getElementById('overallPieChart');
+            if (!ctx) {
+                console.error('Overall pie chart canvas not found');
+                return;
+            }
+
+            const hasData = data && data.labels && data.labels.length > 0;
+
+            try {
+                new Chart(ctx, {
+                    type: 'doughnut',
+                    data: {
+                        labels: hasData ? data.labels : ['No Transactions'],
+                        datasets: [{
+                            data: hasData ? data.data : [1],
+                            backgroundColor: hasData ? data.colors : ['#E5E7EB'],
+                            borderWidth: 2,
+                            borderColor: '#ffffff'
+                        }]
+                    },
+                    options: {
+                        responsive: true,
+                        maintainAspectRatio: false,
+                        plugins: {
+                            legend: {
+                                position: 'bottom',
+                                labels: {
+                                    padding: 15,
+                                    usePointStyle: true,
+                                    font: {
+                                        size: 12
+                                    }
+                                }
+                            },
+                            tooltip: {
+                                enabled: hasData,
+                                callbacks: {
+                                    label: function (context) {
+                                        if (!hasData) return 'No data available';
+                                        const total = context.dataset.data.reduce((a, b) => a + b, 0);
+                                        const percentage = total > 0 ? ((context.raw / total) * 100).toFixed(1) : '0';
+                                        return `${context.label}: ৳${context.raw.toFixed(2)} (${percentage}%)`;
+                                    }
+                                }
+                            }
+                        },
+                        animation: {
+                            animateRotate: true,
+                            duration: 1000
+                        }
+                    }
+                });
+                console.log('Overall pie chart created successfully');
+            } catch (error) {
+                console.error('Error creating overall pie chart:', error);
+            }
+        }
+
+        function createExpensePieChart(data) {
+            const ctx = document.getElementById('expensePieChart');
+            if (!ctx || !data || !data.labels || data.labels.length === 0) {
+                console.log('No expense data available for pie chart');
+                return;
+            }
+
+            try {
+                new Chart(ctx, {
+                    type: 'doughnut',
+                    data: {
+                        labels: data.labels,
+                        datasets: [{
+                            data: data.data || [],
+                            backgroundColor: data.colors || ['#EF4444', '#F97316', '#F59E0B'],
+                            borderWidth: 2,
+                            borderColor: '#ffffff'
+                        }]
+                    },
+                    options: {
+                        responsive: true,
+                        maintainAspectRatio: false,
+                        plugins: {
+                            legend: {
+                                position: 'bottom',
+                                labels: {
+                                    padding: 15,
+                                    usePointStyle: true,
+                                    font: {
+                                        size: 11
+                                    }
+                                }
+                            },
+                            tooltip: {
+                                callbacks: {
+                                    label: function (context) {
+                                        const total = context.dataset.data.reduce((a, b) => a + b, 0);
+                                        const percentage = total > 0 ? ((context.raw / total) * 100).toFixed(1) : '0';
+                                        return `${context.label}: ৳${context.raw.toFixed(2)} (${percentage}%)`;
+                                    }
+                                }
+                            }
+                        },
+                        animation: {
+                            animateRotate: true,
+                            duration: 1000
+                        }
+                    }
+                });
+                console.log('Expense pie chart created successfully');
+            } catch (error) {
+                console.error('Error creating expense pie chart:', error);
+            }
+        }
+
+        function createIncomePieChart(data) {
+            const ctx = document.getElementById('incomePieChart');
+            if (!ctx || !data || !data.labels || data.labels.length === 0) {
+                console.log('No income data available for pie chart');
+                return;
+            }
+
+            try {
+                new Chart(ctx, {
+                    type: 'doughnut',
+                    data: {
+                        labels: data.labels,
+                        datasets: [{
+                            data: data.data || [],
+                            backgroundColor: data.colors || ['#22C55E', '#16A34A', '#15803D'],
+                            borderWidth: 2,
+                            borderColor: '#ffffff'
+                        }]
+                    },
+                    options: {
+                        responsive: true,
+                        maintainAspectRatio: false,
+                        plugins: {
+                            legend: {
+                                position: 'bottom',
+                                labels: {
+                                    padding: 15,
+                                    usePointStyle: true,
+                                    font: {
+                                        size: 11
+                                    }
+                                }
+                            },
+                            tooltip: {
+                                callbacks: {
+                                    label: function (context) {
+                                        const total = context.dataset.data.reduce((a, b) => a + b, 0);
+                                        const percentage = total > 0 ? ((context.raw / total) * 100).toFixed(1) : '0';
+                                        return `${context.label}: ৳${context.raw.toFixed(2)} (${percentage}%)`;
+                                    }
+                                }
+                            }
+                        },
+                        animation: {
+                            animateRotate: true,
+                            duration: 1000
+                        }
+                    }
+                });
+                console.log('Income pie chart created successfully');
+            } catch (error) {
+                console.error('Error creating income pie chart:', error);
+            }
+        }
+
+        function createTrendChart(data) {
+            const ctx = document.getElementById('trendChart');
+            if (!ctx || !data || !data.labels) {
+                console.log('No trend data available');
+                return;
+            }
+
+            console.log('Creating trend chart with data:', data);
+
+            // Calculate proper min/max values for BDT scaling
+            const allValues = [...(data.income || []), ...(data.expense || [])];
+            const maxValue = Math.max(...allValues, 0);
+
+            // Set appropriate Y-axis limits with BDT ranges
+            let yAxisMax, stepSize;
+
+            if (maxValue <= 100) {
+                yAxisMax = 100;
+                stepSize = 10;
+            } else if (maxValue <= 1000) {
+                yAxisMax = Math.ceil(maxValue / 100) * 100;
+                stepSize = 100;
+            } else if (maxValue <= 10000) {
+                yAxisMax = Math.ceil(maxValue / 1000) * 1000;
+                stepSize = 1000;
+            } else {
+                yAxisMax = Math.ceil(maxValue / 10000) * 10000;
+                stepSize = 5000;
+            }
+
+            try {
+                new Chart(ctx, {
+                    type: 'line',
+                    data: {
+                        labels: data.labels,
+                        datasets: [{
+                            label: 'Income',
+                            data: data.income || [],
+                            borderColor: '#22C55E',
+                            backgroundColor: 'rgba(34, 197, 94, 0.1)',
+                            fill: false,
+                            tension: 0.4,
+                            pointRadius: 5,
+                            pointHoverRadius: 8,
+                            pointBackgroundColor: '#22C55E',
+                            pointBorderColor: '#ffffff',
+                            pointBorderWidth: 2
+                        }, {
+                            label: 'Expenses',
+                            data: data.expense || [],
+                            borderColor: '#EF4444',
+                            backgroundColor: 'rgba(239, 68, 68, 0.1)',
+                            fill: false,
+                            tension: 0.4,
+                            pointRadius: 5,
+                            pointHoverRadius: 8,
+                            pointBackgroundColor: '#EF4444',
+                            pointBorderColor: '#ffffff',
+                            pointBorderWidth: 2
+                        }]
+                    },
+                    options: {
+                        responsive: true,
+                        maintainAspectRatio: false,
+                        scales: {
+                            y: {
+                                beginAtZero: true,
+                                min: 0,
+                                max: yAxisMax,
+                                ticks: {
+                                    stepSize: stepSize,
+                                    callback: function (value) {
+                                        return '৳' + value.toLocaleString();
+                                    }
+                                },
+                                grid: {
+                                    display: true,
+                                    color: 'rgba(0, 0, 0, 0.1)'
+                                },
+                                title: {
+                                    display: true,
+                                    text: 'Amount (BDT)',
+                                    font: {
+                                        size: 12,
+                                        weight: 'bold'
+                                    }
+                                }
+                            },
+                            x: {
+                                grid: {
+                                    display: false
+                                },
+                                title: {
+                                    display: true,
+                                    text: 'Date',
+                                    font: {
+                                        size: 12,
+                                        weight: 'bold'
+                                    }
+                                }
+                            }
+                        },
+                        plugins: {
+                            legend: {
+                                position: 'top',
+                            },
+                            tooltip: {
+                                mode: 'index',
+                                intersect: false,
+                                callbacks: {
+                                    label: function (context) {
+                                        return `${context.dataset.label}: ৳${context.raw.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;
+                                    }
+                                }
+                            },
+                            title: {
+                                display: true,
+                                text: 'Daily Income vs Expenses Trend',
+                                font: {
+                                    size: 14,
+                                    weight: 'bold'
+                                }
+                            }
+                        },
+                        interaction: {
+                            mode: 'nearest',
+                            axis: 'x',
+                            intersect: false
+                        },
+                        animation: {
+                            duration: 1000,
+                            easing: 'easeInOutQuart'
+                        }
+                    }
+                });
+                console.log('Trend chart created successfully');
+            } catch (error) {
+                console.error('Error creating trend chart:', error);
+            }
+        }
+
+        function createCategoryBarChart(data) {
+            const ctx = document.getElementById('categoryBarChart');
+            if (!ctx || !data || !data.labels) {
+                console.log('No category comparison data available');
+                return;
+            }
+
+            try {
+                new Chart(ctx, {
+                    type: 'bar',
+                    data: {
+                        labels: data.labels,
+                        datasets: [{
+                            label: 'Income',
+                            data: data.income || [],
+                            backgroundColor: 'rgba(34, 197, 94, 0.8)',
+                            borderColor: '#22C55E',
+                            borderWidth: 1
+                        }, {
+                            label: 'Expenses',
+                            data: data.expense || [],
+                            backgroundColor: 'rgba(239, 68, 68, 0.8)',
+                            borderColor: '#EF4444',
+                            borderWidth: 1
+                        }]
+                    },
+                    options: {
+                        responsive: true,
+                        maintainAspectRatio: false,
+                        scales: {
+                            y: {
+                                beginAtZero: true,
+                                ticks: {
+                                    callback: function (value) {
+                                        return '৳' + value.toLocaleString();
+                                    }
+                                }
+                            }
+                        },
+                        plugins: {
+                            legend: {
+                                position: 'top',
+                            },
+                            tooltip: {
+                                callbacks: {
+                                    label: function (context) {
+                                        return `${context.dataset.label}: ৳${context.raw.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;
+                                    }
+                                }
+                            }
+                        },
+                        animation: {
+                            duration: 1000,
+                            easing: 'easeInOutQuart'
+                        }
+                    }
+                });
+                console.log('Category bar chart created successfully');
+            } catch (error) {
+                console.error('Error creating category bar chart:', error);
+            }
+        }
+
+        function initializeProgressBars() {
+            // Set progress bar widths from data attributes
+            const progressBars = document.querySelectorAll('.progress-bar');
+
+            progressBars.forEach(bar => {
+                const percentage = bar.getAttribute('data-percentage');
+                if (percentage) {
+                    // Start at 0 width for animation
+                    bar.style.width = '0%';
+                    bar.style.transition = 'width 1s ease-in-out';
+
+                    // Set the actual width after a short delay for animation
+                    setTimeout(() => {
+                        bar.style.width = percentage + '%';
+                    }, 100);
+                }
+            });
         }
     </script>
-
-    <!-- Include the analytics JavaScript -->
-    <script src="{{ asset('js/analytics.js') }}"></script>
-@endsection
+@endpush

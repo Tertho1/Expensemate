@@ -8,6 +8,7 @@ use App\Models\Category;
 use Illuminate\Support\Facades\DB;
 use Carbon\Carbon;
 use Illuminate\Support\Facades\Auth;
+use Illuminate\Support\Facades\Log;
 
 class AnalyticsController extends Controller
 {
@@ -48,14 +49,16 @@ class AnalyticsController extends Controller
                 ->groupBy('categories.name', 'categories.id')
                 ->get();
 
-            // Get daily transactions for trend chart
-            $dailyTransactions = Transaction::where('user_id', $userId)
+            // FIXED: Get daily transactions with proper aggregation for trend chart
+            $dailyTransactionsRaw = Transaction::where('user_id', $userId)
                 ->whereBetween('date', [$startDate, $endDate])
-                ->select('date', 'type', DB::raw('SUM(amount) as total'))
+                ->select('date', 'type', DB::raw('SUM(amount) as daily_total'))
                 ->groupBy('date', 'type')
                 ->orderBy('date')
-                ->get()
-                ->groupBy('date');
+                ->get();
+
+            // Group by date for easier processing
+            $dailyTransactions = $dailyTransactionsRaw->groupBy('date');
 
             // Calculate totals for the selected period
             $totalIncome = Transaction::where('user_id', $userId)
@@ -80,8 +83,8 @@ class AnalyticsController extends Controller
 
         $balance = $totalIncome - $totalExpense;
 
-        // Prepare chart data - ALWAYS return valid data structure
-        $chartData = $this->prepareChartData($expensesByCategory, $incomeByCategory, $dailyTransactions, $startDate, $endDate);
+        // Prepare chart data
+        $chartData = $this->prepareChartData($expensesByCategory, $incomeByCategory, $dailyTransactions, $startDate, $endDate, $totalIncome, $totalExpense);
 
         return view('analytics', compact(
             'expensesByCategory',
@@ -98,20 +101,65 @@ class AnalyticsController extends Controller
         ));
     }
 
-    private function prepareChartData($expensesByCategory, $incomeByCategory, $dailyTransactions, $startDate, $endDate)
+    private function prepareChartData($expensesByCategory, $incomeByCategory, $dailyTransactions, $startDate, $endDate, $totalIncome, $totalExpense)
     {
-        // Ensure we always have arrays, never null
+        // Define color palettes
+        $expenseColors = [
+            '#EF4444',
+            '#DC2626',
+            '#B91C1C',
+            '#991B1B',
+            '#7F1D1D',
+            '#F87171',
+            '#FCA5A5',
+            '#FEB2B2',
+            '#FECACA',
+            '#FEE2E2'
+        ];
+
+        $incomeColors = [
+            '#22C55E',
+            '#16A34A',
+            '#15803D',
+            '#166534',
+            '#14532D',
+            '#4ADE80',
+            '#86EFAC',
+            '#BBF7D0',
+            '#D1FAE5',
+            '#ECFDF5'
+        ];
+
+        // Prepare expense pie data
         $expenseLabels = $expensesByCategory->pluck('name')->toArray();
         $expenseData = $expensesByCategory->pluck('total')->map(function ($item) {
             return (float) $item;
         })->toArray();
 
+        // Prepare income pie data
         $incomeLabels = $incomeByCategory->pluck('name')->toArray();
         $incomeData = $incomeByCategory->pluck('total')->map(function ($item) {
             return (float) $item;
         })->toArray();
 
-        // Prepare daily trend data
+        // Prepare overall transaction pie data
+        $overallData = [];
+        $overallLabels = [];
+        $overallColors = [];
+
+        if ($totalIncome > 0) {
+            $overallLabels[] = 'Total Income';
+            $overallData[] = (float) $totalIncome;
+            $overallColors[] = '#22C55E';
+        }
+
+        if ($totalExpense > 0) {
+            $overallLabels[] = 'Total Expenses';
+            $overallData[] = (float) $totalExpense;
+            $overallColors[] = '#EF4444';
+        }
+
+        // FIXED: Prepare daily trend data with complete date range
         $dateRange = [];
         $currentDate = Carbon::parse($startDate);
         $endDateCarbon = Carbon::parse($endDate);
@@ -127,12 +175,25 @@ class AnalyticsController extends Controller
 
         foreach ($dateRange as $date) {
             $dayData = $dailyTransactions->get($date, collect());
-            $dailyIncomeData[] = (float) ($dayData->where('type', 'income')->sum('total') ?: 0);
-            $dailyExpenseData[] = (float) ($dayData->where('type', 'expense')->sum('total') ?: 0);
-            $trendLabels[] = Carbon::parse($date)->format('M j');
+
+            // Get income and expense for this specific day
+            $dailyIncome = $dayData->where('type', 'income')->sum('daily_total') ?: 0;
+            $dailyExpense = $dayData->where('type', 'expense')->sum('daily_total') ?: 0;
+
+            $dailyIncomeData[] = (float) $dailyIncome;
+            $dailyExpenseData[] = (float) $dailyExpense;
+            $trendLabels[] = Carbon::parse($date)->format('M j'); // Short format for labels
         }
 
-        // Prepare bar chart data (category comparison)
+        // Log for debugging
+        Log::info('Daily Trend Data:', [
+            'dateRange' => $dateRange,
+            'dailyIncomeData' => $dailyIncomeData,
+            'dailyExpenseData' => $dailyExpenseData,
+            'trendLabels' => $trendLabels
+        ]);
+
+        // Prepare category comparison bar chart data
         $allCategories = $expensesByCategory->pluck('name')
             ->merge($incomeByCategory->pluck('name'))
             ->unique()
@@ -150,49 +211,21 @@ class AnalyticsController extends Controller
             $categoryExpenseData[] = (float) ($expenseAmount ? $expenseAmount->total : 0);
         }
 
-        // Return structured data that JavaScript can safely parse
         return [
+            'overallPie' => [
+                'labels' => $overallLabels,
+                'data' => $overallData,
+                'colors' => $overallColors
+            ],
             'expensePie' => [
                 'labels' => $expenseLabels,
                 'data' => $expenseData,
-                'colors' => [
-                    '#EF4444',
-                    '#F97316',
-                    '#F59E0B',
-                    '#EAB308',
-                    '#84CC16',
-                    '#22C55E',
-                    '#10B981',
-                    '#14B8A6',
-                    '#06B6D4',
-                    '#0EA5E9',
-                    '#3B82F6',
-                    '#6366F1',
-                    '#8B5CF6',
-                    '#A855F7',
-                    '#D946EF'
-                ]
+                'colors' => array_slice($expenseColors, 0, count($expenseLabels))
             ],
             'incomePie' => [
                 'labels' => $incomeLabels,
                 'data' => $incomeData,
-                'colors' => [
-                    '#22C55E',
-                    '#16A34A',
-                    '#15803D',
-                    '#166534',
-                    '#14532D',
-                    '#10B981',
-                    '#059669',
-                    '#047857',
-                    '#065F46',
-                    '#064E3B',
-                    '#84CC16',
-                    '#65A30D',
-                    '#4D7C0F',
-                    '#365314',
-                    '#1A2E05'
-                ]
+                'colors' => array_slice($incomeColors, 0, count($incomeLabels))
             ],
             'trend' => [
                 'labels' => $trendLabels,

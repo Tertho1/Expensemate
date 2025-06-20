@@ -101,11 +101,40 @@ function initializeCharts(chartData) {
 }
 
 document.addEventListener('DOMContentLoaded', function () {
+    // Get data from the container element
+    const container = document.querySelector('.container.mx-auto[data-chart-data]');
+
+    if (!container) {
+        console.warn('Analytics container not found');
+        return;
+    }
+
+    // Safely parse chart data from data attribute
+    let chartData;
+    try {
+        const rawData = container.getAttribute('data-chart-data');
+        chartData = JSON.parse(rawData);
+        console.log('Chart data loaded from data attribute:', chartData);
+    } catch (error) {
+        console.error('Error parsing chart data from data attribute:', error);
+        chartData = {
+            overallPie: { labels: [], data: [], colors: [] },
+            expensePie: { labels: [], data: [], colors: [] },
+            incomePie: { labels: [], data: [], colors: [] },
+            trend: { labels: [], income: [], expense: [] },
+            categoryBar: { labels: [], income: [], expense: [] }
+        };
+    }
+
+    // Get boolean flags
+    const hasExpenseData = container.getAttribute('data-has-expense-data') === 'true';
+    const hasIncomeData = container.getAttribute('data-has-income-data') === 'true';
+
     // Initialize the analytics dashboard
-    initializeAnalytics();
+    initializeAnalytics(chartData, hasExpenseData, hasIncomeData);
 });
 
-function initializeAnalytics() {
+function initializeAnalytics(chartData, hasExpenseData, hasIncomeData) {
     // Set default date range if not already set
     setDefaultDateRange();
 
@@ -115,8 +144,11 @@ function initializeAnalytics() {
     // Initialize progress bars with proper widths
     initializeProgressBars();
 
-    // Initialize charts with safety checks
-    initializeCharts();
+    // Initialize charts with provided data
+    initializeCharts(chartData, hasExpenseData, hasIncomeData);
+
+    // Enhance data display
+    enhanceDataDisplay();
 }
 
 function initializeProgressBars() {
@@ -138,34 +170,91 @@ function initializeProgressBars() {
     });
 }
 
-function initializeCharts() {
+function initializeCharts(chartData, hasExpenseData, hasIncomeData) {
     // Add tooltips to progress bars
     addProgressBarTooltips();
 
-    // Initialize Chart.js charts with safety checks
-    if (window.chartData && typeof window.chartData === 'object') {
+    // Initialize Chart.js charts with provided data
+    if (chartData && typeof chartData === 'object') {
         try {
-            createExpensePieChart();
-            createIncomePieChart();
-            createTrendChart();
-            createCategoryBarChart();
+            // Always create overall pie chart if we have any data
+            createOverallPieChart(chartData.overallPie);
+
+            if (hasExpenseData) {
+                createExpensePieChart(chartData.expensePie);
+            }
+            if (hasIncomeData) {
+                createIncomePieChart(chartData.incomePie);
+            }
+            createTrendChart(chartData.trend);
+            createCategoryBarChart(chartData.categoryBar);
         } catch (error) {
             console.error('Error initializing charts:', error);
         }
     } else {
         console.warn('Chart data is not available or invalid');
     }
-
-    // Initialize any additional visualizations
-    enhanceDataDisplay();
 }
 
-function createExpensePieChart() {
-    const ctx = document.getElementById('expensePieChart');
+function createOverallPieChart(data) {
+    const ctx = document.getElementById('overallPieChart');
     if (!ctx) return;
 
-    const data = window.chartData.expensePie;
-    if (!data || !data.labels || !Array.isArray(data.labels) || data.labels.length === 0) {
+    // Show chart even if no data to indicate no transactions
+    const hasData = data && data.labels && data.labels.length > 0;
+
+    try {
+        new Chart(ctx, {
+            type: 'doughnut',
+            data: {
+                labels: hasData ? data.labels : ['No Transactions'],
+                datasets: [{
+                    data: hasData ? data.data : [1],
+                    backgroundColor: hasData ? data.colors : ['#E5E7EB'],
+                    borderWidth: 2,
+                    borderColor: '#ffffff'
+                }]
+            },
+            options: {
+                responsive: true,
+                maintainAspectRatio: false,
+                plugins: {
+                    legend: {
+                        position: 'bottom',
+                        labels: {
+                            padding: 15,
+                            usePointStyle: true,
+                            font: {
+                                size: 12
+                            }
+                        }
+                    },
+                    tooltip: {
+                        enabled: hasData,
+                        callbacks: {
+                            label: function (context) {
+                                if (!hasData) return 'No data available';
+                                const total = context.dataset.data.reduce((a, b) => a + b, 0);
+                                const percentage = total > 0 ? ((context.raw / total) * 100).toFixed(1) : '0';
+                                return `${context.label}: ৳${context.raw.toFixed(2)} (${percentage}%)`;
+                            }
+                        }
+                    }
+                },
+                animation: {
+                    animateRotate: true,
+                    duration: 1000
+                }
+            }
+        });
+    } catch (error) {
+        console.error('Error creating overall pie chart:', error);
+    }
+}
+
+function createExpensePieChart(data) {
+    const ctx = document.getElementById('expensePieChart');
+    if (!ctx || !data || !data.labels || !Array.isArray(data.labels) || data.labels.length === 0) {
         console.log('No expense data available for pie chart');
         return;
     }
@@ -189,8 +278,11 @@ function createExpensePieChart() {
                     legend: {
                         position: 'bottom',
                         labels: {
-                            padding: 20,
-                            usePointStyle: true
+                            padding: 15,
+                            usePointStyle: true,
+                            font: {
+                                size: 11
+                            }
                         }
                     },
                     tooltip: {
@@ -198,7 +290,7 @@ function createExpensePieChart() {
                             label: function (context) {
                                 const total = context.dataset.data.reduce((a, b) => a + b, 0);
                                 const percentage = total > 0 ? ((context.raw / total) * 100).toFixed(1) : '0';
-                                return `${context.label}: $${context.raw.toFixed(2)} (${percentage}%)`;
+                                return `${context.label}: ৳${context.raw.toFixed(2)} (${percentage}%)`;
                             }
                         }
                     }
@@ -214,12 +306,9 @@ function createExpensePieChart() {
     }
 }
 
-function createIncomePieChart() {
+function createIncomePieChart(data) {
     const ctx = document.getElementById('incomePieChart');
-    if (!ctx) return;
-
-    const data = window.chartData.incomePie;
-    if (!data || !data.labels || !Array.isArray(data.labels) || data.labels.length === 0) {
+    if (!ctx || !data || !data.labels || !Array.isArray(data.labels) || data.labels.length === 0) {
         console.log('No income data available for pie chart');
         return;
     }
@@ -243,8 +332,11 @@ function createIncomePieChart() {
                     legend: {
                         position: 'bottom',
                         labels: {
-                            padding: 20,
-                            usePointStyle: true
+                            padding: 15,
+                            usePointStyle: true,
+                            font: {
+                                size: 11
+                            }
                         }
                     },
                     tooltip: {
@@ -252,7 +344,7 @@ function createIncomePieChart() {
                             label: function (context) {
                                 const total = context.dataset.data.reduce((a, b) => a + b, 0);
                                 const percentage = total > 0 ? ((context.raw / total) * 100).toFixed(1) : '0';
-                                return `${context.label}: $${context.raw.toFixed(2)} (${percentage}%)`;
+                                return `${context.label}: ৳${context.raw.toFixed(2)} (${percentage}%)`;
                             }
                         }
                     }
@@ -268,14 +360,35 @@ function createIncomePieChart() {
     }
 }
 
-function createTrendChart() {
+function createTrendChart(data) {
     const ctx = document.getElementById('trendChart');
-    if (!ctx) return;
-
-    const data = window.chartData.trend;
-    if (!data || !data.labels || !Array.isArray(data.labels)) {
+    if (!ctx || !data || !data.labels || !Array.isArray(data.labels)) {
         console.log('No trend data available');
         return;
+    }
+
+    console.log('Creating trend chart with data:', data); // Debug log
+
+    // FIXED: Calculate proper min/max values for BDT scaling
+    const allValues = [...(data.income || []), ...(data.expense || [])];
+    const maxValue = Math.max(...allValues, 0);
+    const minValue = 0; // Always start from 0 for financial data
+
+    // Set appropriate Y-axis limits with BDT ranges
+    let yAxisMax, stepSize;
+
+    if (maxValue <= 100) {
+        yAxisMax = 100;
+        stepSize = 10;
+    } else if (maxValue <= 1000) {
+        yAxisMax = Math.ceil(maxValue / 100) * 100;
+        stepSize = 100;
+    } else if (maxValue <= 10000) {
+        yAxisMax = Math.ceil(maxValue / 1000) * 1000;
+        stepSize = 1000;
+    } else {
+        yAxisMax = Math.ceil(maxValue / 10000) * 10000;
+        stepSize = 5000;
     }
 
     try {
@@ -288,15 +401,25 @@ function createTrendChart() {
                     data: data.income || [],
                     borderColor: '#22C55E',
                     backgroundColor: 'rgba(34, 197, 94, 0.1)',
-                    fill: true,
-                    tension: 0.4
+                    fill: false,
+                    tension: 0.4,
+                    pointRadius: 5,
+                    pointHoverRadius: 8,
+                    pointBackgroundColor: '#22C55E',
+                    pointBorderColor: '#ffffff',
+                    pointBorderWidth: 2
                 }, {
                     label: 'Expenses',
                     data: data.expense || [],
                     borderColor: '#EF4444',
                     backgroundColor: 'rgba(239, 68, 68, 0.1)',
-                    fill: true,
-                    tension: 0.4
+                    fill: false,
+                    tension: 0.4,
+                    pointRadius: 5,
+                    pointHoverRadius: 8,
+                    pointBackgroundColor: '#EF4444',
+                    pointBorderColor: '#ffffff',
+                    pointBorderWidth: 2
                 }]
             },
             options: {
@@ -305,9 +428,37 @@ function createTrendChart() {
                 scales: {
                     y: {
                         beginAtZero: true,
+                        min: minValue,
+                        max: yAxisMax,
                         ticks: {
+                            stepSize: stepSize,
                             callback: function (value) {
-                                return '$' + value.toFixed(0);
+                                return '৳' + value.toLocaleString();
+                            }
+                        },
+                        grid: {
+                            display: true,
+                            color: 'rgba(0, 0, 0, 0.1)'
+                        },
+                        title: {
+                            display: true,
+                            text: 'Amount (BDT)',
+                            font: {
+                                size: 12,
+                                weight: 'bold'
+                            }
+                        }
+                    },
+                    x: {
+                        grid: {
+                            display: false
+                        },
+                        title: {
+                            display: true,
+                            text: 'Date',
+                            font: {
+                                size: 12,
+                                weight: 'bold'
                             }
                         }
                     }
@@ -321,8 +472,16 @@ function createTrendChart() {
                         intersect: false,
                         callbacks: {
                             label: function (context) {
-                                return `${context.dataset.label}: $${context.raw.toFixed(2)}`;
+                                return `${context.dataset.label}: ৳${context.raw.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;
                             }
+                        }
+                    },
+                    title: {
+                        display: true,
+                        text: 'Daily Income vs Expenses Trend',
+                        font: {
+                            size: 14,
+                            weight: 'bold'
                         }
                     }
                 },
@@ -342,12 +501,9 @@ function createTrendChart() {
     }
 }
 
-function createCategoryBarChart() {
+function createCategoryBarChart(data) {
     const ctx = document.getElementById('categoryBarChart');
-    if (!ctx) return;
-
-    const data = window.chartData.categoryBar;
-    if (!data || !data.labels || !Array.isArray(data.labels)) {
+    if (!ctx || !data || !data.labels || !Array.isArray(data.labels)) {
         console.log('No category comparison data available');
         return;
     }
@@ -379,7 +535,7 @@ function createCategoryBarChart() {
                         beginAtZero: true,
                         ticks: {
                             callback: function (value) {
-                                return '$' + value.toFixed(0);
+                                return '৳' + value.toLocaleString();
                             }
                         }
                     }
@@ -391,7 +547,7 @@ function createCategoryBarChart() {
                     tooltip: {
                         callbacks: {
                             label: function (context) {
-                                return `${context.dataset.label}: $${context.raw.toFixed(2)}`;
+                                return `${context.dataset.label}: ৳${context.raw.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;
                             }
                         }
                     }
@@ -407,6 +563,7 @@ function createCategoryBarChart() {
     }
 }
 
+// Add the rest of the helper functions (keeping them the same)...
 function setDefaultDateRange() {
     const startDateInput = document.querySelector('input[name="start_date"]');
     const endDateInput = document.querySelector('input[name="end_date"]');
@@ -558,8 +715,8 @@ function addPercentageLabels() {
     const expenseCard = document.querySelector('.text-red-600');
 
     if (incomeCard && expenseCard) {
-        const incomeAmount = parseFloat(incomeCard.textContent.replace(/[$,]/g, ''));
-        const expenseAmount = parseFloat(expenseCard.textContent.replace(/[$,]/g, ''));
+        const incomeAmount = parseFloat(incomeCard.textContent.replace(/[৳$,]/g, ''));
+        const expenseAmount = parseFloat(expenseCard.textContent.replace(/[৳$,]/g, ''));
         const total = incomeAmount + expenseAmount;
 
         if (total > 0) {
@@ -666,9 +823,10 @@ function showAlert(message, type = 'info') {
 
 // Utility functions for formatting
 function formatCurrency(amount) {
-    return new Intl.NumberFormat('en-US', {
+    return new Intl.NumberFormat('en-BD', {
         style: 'currency',
-        currency: 'USD'
+        currency: 'BDT',
+        currencyDisplay: 'symbol'
     }).format(amount);
 }
 
