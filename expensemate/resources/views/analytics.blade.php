@@ -16,27 +16,27 @@
             <div class="mb-6">
                 <h4 class="text-sm font-medium text-gray-700 mb-3">Quick Filters</h4>
                 <div class="flex flex-wrap gap-2">
-                    <button type="button" onclick="setQuickFilter('thisMonth')" 
+                    <button type="button" onclick="setQuickFilter('thisMonth')"
                         class="quick-filter-btn px-4 py-2 text-sm bg-gray-200 text-gray-700 rounded-md hover:bg-gray-300 transition"
                         data-filter="thisMonth">
                         This Month
                     </button>
-                    <button type="button" onclick="setQuickFilter('previousMonth')" 
+                    <button type="button" onclick="setQuickFilter('previousMonth')"
                         class="quick-filter-btn px-4 py-2 text-sm bg-gray-200 text-gray-700 rounded-md hover:bg-gray-300 transition"
                         data-filter="previousMonth">
                         Previous Month
                     </button>
-                    <button type="button" onclick="setQuickFilter('thisYear')" 
+                    <button type="button" onclick="setQuickFilter('thisYear')"
                         class="quick-filter-btn px-4 py-2 text-sm bg-gray-200 text-gray-700 rounded-md hover:bg-gray-300 transition"
                         data-filter="thisYear">
                         This Year
                     </button>
-                    <button type="button" onclick="setQuickFilter('previousYear')" 
+                    <button type="button" onclick="setQuickFilter('previousYear')"
                         class="quick-filter-btn px-4 py-2 text-sm bg-gray-200 text-gray-700 rounded-md hover:bg-gray-300 transition"
                         data-filter="previousYear">
                         Previous Year
                     </button>
-                    <button type="button" onclick="setQuickFilter('allTime')" 
+                    <button type="button" onclick="setQuickFilter('allTime')"
                         class="quick-filter-btn px-4 py-2 text-sm bg-gray-200 text-gray-700 rounded-md hover:bg-gray-300 transition"
                         data-filter="allTime">
                         All Time
@@ -60,12 +60,13 @@
                     Apply Filter
                 </button>
             </form>
-            
+
             <!-- Current Filter Display -->
             <div class="mt-4 p-3 bg-gray-50 rounded-md">
                 <p class="text-sm text-gray-600">
-                    <span class="font-medium">Current Period:</span> 
-                    <span id="current-period-display">{{ \Carbon\Carbon::parse($startDate)->format('M j, Y') }} - {{ \Carbon\Carbon::parse($endDate)->format('M j, Y') }}</span>
+                    <span class="font-medium">Current Period:</span>
+                    <span id="current-period-display">{{ \Carbon\Carbon::parse($startDate)->format('M j, Y') }} -
+                        {{ \Carbon\Carbon::parse($endDate)->format('M j, Y') }}</span>
                 </p>
             </div>
         </div>
@@ -282,200 +283,149 @@
 @endsection
 
 @push('scripts')
-    <!-- Chart.js CDN -->
     <script src="https://cdn.jsdelivr.net/npm/chart.js@3.9.1/dist/chart.min.js"></script>
-
-    <!-- Chart Data -->
     <script id="chart-data" type="application/json">{!! json_encode($chartData ?? []) !!}</script>
 
     <script>
-        // GLOBAL FUNCTIONS (Available before DOMContentLoaded)
         function setQuickFilter(filterType) {
-            console.log('🔄 setQuickFilter called with:', filterType);
             const now = new Date();
             let startDate, endDate;
-            
-            switch(filterType) {
+
+            switch (filterType) {
                 case 'thisMonth':
                     startDate = new Date(now.getFullYear(), now.getMonth(), 1);
                     endDate = new Date(now.getFullYear(), now.getMonth() + 1, 0);
                     break;
-                    
                 case 'previousMonth':
                     startDate = new Date(now.getFullYear(), now.getMonth() - 1, 1);
                     endDate = new Date(now.getFullYear(), now.getMonth(), 0);
                     break;
-                    
                 case 'thisYear':
                     startDate = new Date(now.getFullYear(), 0, 1);
                     endDate = new Date(now.getFullYear(), 11, 31);
                     break;
-                    
                 case 'previousYear':
                     startDate = new Date(now.getFullYear() - 1, 0, 1);
                     endDate = new Date(now.getFullYear() - 1, 11, 31);
                     break;
-                    
                 case 'allTime':
                     startDate = new Date('2020-01-01');
                     endDate = new Date();
                     break;
-                    
                 default:
-                    console.error('❌ Unknown filter type:', filterType);
                     return;
             }
-            
+
             document.getElementById('start_date').value = formatDateForInput(startDate);
             document.getElementById('end_date').value = formatDateForInput(endDate);
-            
+
             updateQuickFilterButtons(filterType);
             updateCurrentPeriodDisplay(startDate, endDate);
-            
+
             document.getElementById('analytics-form').submit();
         }
-        
+
         function formatDateForInput(date) {
             const year = date.getFullYear();
             const month = String(date.getMonth() + 1).padStart(2, '0');
             const day = String(date.getDate()).padStart(2, '0');
             return `${year}-${month}-${day}`;
         }
-        
+
         function updateQuickFilterButtons(activeFilter) {
-            console.log('🔄 Updating quick filter buttons, active:', activeFilter);
-            // Reset all buttons to default state
             document.querySelectorAll('.quick-filter-btn').forEach(btn => {
                 btn.classList.remove('bg-blue-500', 'text-white', 'active');
                 btn.classList.add('bg-gray-200', 'text-gray-700');
             });
-            
-            // Activate the selected button
+
             const activeBtn = document.querySelector(`[data-filter="${activeFilter}"]`);
             if (activeBtn) {
                 activeBtn.classList.remove('bg-gray-200', 'text-gray-700');
                 activeBtn.classList.add('bg-blue-500', 'text-white', 'active');
-                console.log('✅ Activated button:', activeFilter);
-            } else {
-                console.warn('⚠️ Button not found for filter:', activeFilter);
             }
         }
-        
+
         function updateCurrentPeriodDisplay(startDate, endDate) {
             const options = { year: 'numeric', month: 'short', day: 'numeric' };
             const startStr = startDate.toLocaleDateString('en-US', options);
             const endStr = endDate.toLocaleDateString('en-US', options);
             document.getElementById('current-period-display').textContent = `${startStr} - ${endStr}`;
         }
-        
-        // ENHANCED: Fixed detectCurrentFilter function with better date comparison
+
         function detectCurrentFilter() {
-            console.log('🔍 Detecting current filter...');
-            
             const startDateValue = document.getElementById('start_date').value;
             const endDateValue = document.getElementById('end_date').value;
-            
-            if (!startDateValue || !endDateValue) {
-                console.log('⚠️ No date values found');
-                return;
-            }
-            
+
+            if (!startDateValue || !endDateValue) return;
+
             const startDate = new Date(startDateValue);
             const endDate = new Date(endDateValue);
             const now = new Date();
-            
-            console.log('📅 Current dates:', {
-                start: startDateValue,
-                end: endDateValue,
-                startParsed: startDate,
-                endParsed: endDate
-            });
-            
-            // This Month
+
             const thisMonthStart = new Date(now.getFullYear(), now.getMonth(), 1);
             const thisMonthEnd = new Date(now.getFullYear(), now.getMonth() + 1, 0);
-            console.log('🗓️ This Month:', thisMonthStart.toISOString().split('T')[0], 'to', thisMonthEnd.toISOString().split('T')[0]);
-            
+
             if (isSameDate(startDate, thisMonthStart) && isSameDate(endDate, thisMonthEnd)) {
-                console.log('✅ Detected: thisMonth');
                 updateQuickFilterButtons('thisMonth');
                 return;
             }
-            
-            // Previous Month
+
             const prevMonthStart = new Date(now.getFullYear(), now.getMonth() - 1, 1);
             const prevMonthEnd = new Date(now.getFullYear(), now.getMonth(), 0);
-            console.log('🗓️ Previous Month:', prevMonthStart.toISOString().split('T')[0], 'to', prevMonthEnd.toISOString().split('T')[0]);
-            
+
             if (isSameDate(startDate, prevMonthStart) && isSameDate(endDate, prevMonthEnd)) {
-                console.log('✅ Detected: previousMonth');
                 updateQuickFilterButtons('previousMonth');
                 return;
             }
-            
-            // This Year
+
             const thisYearStart = new Date(now.getFullYear(), 0, 1);
             const thisYearEnd = new Date(now.getFullYear(), 11, 31);
-            console.log('🗓️ This Year:', thisYearStart.toISOString().split('T')[0], 'to', thisYearEnd.toISOString().split('T')[0]);
-            
+
             if (isSameDate(startDate, thisYearStart) && isSameDate(endDate, thisYearEnd)) {
-                console.log('✅ Detected: thisYear');
                 updateQuickFilterButtons('thisYear');
                 return;
             }
-            
-            // Previous Year
+
             const prevYearStart = new Date(now.getFullYear() - 1, 0, 1);
             const prevYearEnd = new Date(now.getFullYear() - 1, 11, 31);
-            console.log('🗓️ Previous Year:', prevYearStart.toISOString().split('T')[0], 'to', prevYearEnd.toISOString().split('T')[0]);
-            
+
             if (isSameDate(startDate, prevYearStart) && isSameDate(endDate, prevYearEnd)) {
-                console.log('✅ Detected: previousYear');
                 updateQuickFilterButtons('previousYear');
                 return;
             }
-            
-            // All Time (very broad range)
+
             const allTimeStart = new Date('2020-01-01');
             if (isSameDate(startDate, allTimeStart) && endDate >= now) {
-                console.log('✅ Detected: allTime');
                 updateQuickFilterButtons('allTime');
                 return;
             }
-            
-            console.log('🔍 No quick filter match found - custom date range');
-            // No quick filter matches - it's a custom range, so no button should be active
+
             document.querySelectorAll('.quick-filter-btn').forEach(btn => {
                 btn.classList.remove('bg-blue-500', 'text-white', 'active');
                 btn.classList.add('bg-gray-200', 'text-gray-700');
             });
         }
-        
-        // Helper function to compare dates (only year, month, day)
+
         function isSameDate(date1, date2) {
             return date1.getFullYear() === date2.getFullYear() &&
-                   date1.getMonth() === date2.getMonth() &&
-                   date1.getDate() === date2.getDate();
+                date1.getMonth() === date2.getMonth() &&
+                date1.getDate() === date2.getDate();
         }
 
-        // ENHANCED COLOR PALETTES FOR DIFFERENT CATEGORIES
         function getExpenseColors() {
-            const colors = [
+            return [
                 '#EF4444', '#F97316', '#F59E0B', '#8B5CF6', '#EC4899', '#10B981', '#3B82F6', '#6366F1', '#84CC16', '#F472B6',
                 '#06B6D4', '#8B5A2B', '#DC2626', '#EA580C', '#D97706', '#7C3AED', '#DB2777', '#059669', '#2563EB', '#4F46E5'
             ];
-            return colors;
         }
 
         function getIncomeColors() {
-            const colors = [
+            return [
                 '#22C55E', '#16A34A', '#15803D', '#166534', '#14532D', '#4ADE80', '#86EFAC', '#BBF7D0', '#10B981', '#059669',
                 '#047857', '#065F46', '#064E3B', '#6EE7B7', '#A7F3D0', '#D1FAE5', '#34D399', '#6BCF7F', '#52C41A', '#73D13D'
             ];
-            return colors;
         }
 
-        // CHART FUNCTIONS (keeping them the same as they work)
         function createOverallPieChart(data) {
             const ctx = document.getElementById('overallPieChart');
             if (!ctx) return;
@@ -529,7 +479,7 @@
                     }
                 });
             } catch (error) {
-                console.error('❌ Error creating overall pie chart:', error);
+                // Silent error handling
             }
         }
 
@@ -539,7 +489,7 @@
 
             try {
                 const colors = getExpenseColors().slice(0, data.labels.length);
-                
+
                 new Chart(ctx, {
                     type: 'doughnut',
                     data: {
@@ -587,7 +537,7 @@
                     }
                 });
             } catch (error) {
-                console.error('❌ Error creating expense pie chart:', error);
+                // Silent error handling
             }
         }
 
@@ -597,7 +547,7 @@
 
             try {
                 const colors = getIncomeColors().slice(0, data.labels.length);
-                
+
                 new Chart(ctx, {
                     type: 'doughnut',
                     data: {
@@ -645,7 +595,7 @@
                     }
                 });
             } catch (error) {
-                console.error('❌ Error creating income pie chart:', error);
+                // Silent error handling
             }
         }
 
@@ -798,7 +748,7 @@
                     }
                 });
             } catch (error) {
-                console.error('❌ Error creating trend chart:', error);
+                // Silent error handling
             }
         }
 
@@ -855,7 +805,7 @@
                     }
                 });
             } catch (error) {
-                console.error('❌ Error creating category bar chart:', error);
+                // Silent error handling
             }
         }
 
@@ -875,62 +825,47 @@
 
         function initializeAllCharts(chartData, hasExpenseData, hasIncomeData) {
             createOverallPieChart(chartData.overallPie);
-            
+
             if (hasExpenseData && chartData.expensePie && chartData.expensePie.labels && chartData.expensePie.labels.length > 0) {
                 createExpensePieChart(chartData.expensePie);
             }
-            
+
             if (hasIncomeData && chartData.incomePie && chartData.incomePie.labels && chartData.incomePie.labels.length > 0) {
                 createIncomePieChart(chartData.incomePie);
             }
-            
+
             createTrendChart(chartData.trend);
             createCategoryBarChart(chartData.categoryBar);
             initializeProgressBars();
         }
 
-        // MAIN INITIALIZATION
-        document.addEventListener('DOMContentLoaded', function() {
-            console.log('🌟 DOM LOADED - Starting Analytics Initialization...');
-            
-            // IMPORTANT: Detect current filter FIRST before setting up event listeners
+        document.addEventListener('DOMContentLoaded', function () {
             detectCurrentFilter();
-            
-            // Monitor date changes - clear active filter when manually changing dates
-            document.getElementById('start_date').addEventListener('change', function() {
-                console.log('📅 Start date changed manually');
-                document.querySelectorAll('.quick-filter-btn').forEach(btn => {
-                    btn.classList.remove('bg-blue-500', 'text-white', 'active');
-                    btn.classList.add('bg-gray-200', 'text-gray-700');
-                });
-            });
-            
-            document.getElementById('end_date').addEventListener('change', function() {
-                console.log('📅 End date changed manually');
+
+            document.getElementById('start_date').addEventListener('change', function () {
                 document.querySelectorAll('.quick-filter-btn').forEach(btn => {
                     btn.classList.remove('bg-blue-500', 'text-white', 'active');
                     btn.classList.add('bg-gray-200', 'text-gray-700');
                 });
             });
 
-            // Initialize charts after delay
-            setTimeout(function() {
-                if (typeof Chart === 'undefined') {
-                    console.error('❌ Chart.js not loaded!');
-                    return;
-                }
+            document.getElementById('end_date').addEventListener('change', function () {
+                document.querySelectorAll('.quick-filter-btn').forEach(btn => {
+                    btn.classList.remove('bg-blue-500', 'text-white', 'active');
+                    btn.classList.add('bg-gray-200', 'text-gray-700');
+                });
+            });
+
+            setTimeout(function () {
+                if (typeof Chart === 'undefined') return;
 
                 let chartData;
                 try {
                     const chartDataElement = document.getElementById('chart-data');
-                    if (!chartDataElement) {
-                        console.error('❌ Chart data element not found!');
-                        return;
-                    }
-                    
+                    if (!chartDataElement) return;
+
                     chartData = JSON.parse(chartDataElement.textContent);
                 } catch (error) {
-                    console.error('❌ Error parsing chart data:', error);
                     chartData = {
                         overallPie: { labels: [], data: [], colors: [] },
                         expensePie: { labels: [], data: [], colors: [] },
