@@ -2,26 +2,26 @@
     <nav class="flex items-center justify-between p-4 max-w-7xl mx-auto">
         <div class="flex items-center">
             <a href="{{ route('dashboard') }}" class="flex items-center">
-                <svg xmlns="http://www.w3.org/2000/svg" class="h-8 w-8 text-primary" viewBox="0 0 20 20"
+                <svg xmlns="http://www.w3.org/2000/svg" class="h-8 w-8 text-blue-600" viewBox="0 0 20 20"
                     fill="currentColor">
                     <path fill-rule="evenodd"
-                        d="M3 4a1 1 0 011-1h12a1 1 0 110 2H4a1 1 0 01-1-1zm0 4a1 1 0 011-1h12a1 1 0 110 2H4a1 1 0 01-1-1zm0 4a1 1 0 011-1h12a1 1 0 110 2H4a1 1 0 01-1-1z"
+                        d="M4 4a2 2 0 00-2 2v4a2 2 0 002 2V6h10a2 2 0 00-2-2H4zm2 6a2 2 0 012-2h8a2 2 0 012 2v4a2 2 0 01-2 2H8a2 2 0 01-2-2v-4zm6 4a2 2 0 100-4 2 2 0 000 4z"
                         clip-rule="evenodd" />
                 </svg>
-                <span class="ml-2 text-xl font-bold">Expense<span class="text-primary">Mate</span></span>
+                <span class="ml-2 text-xl font-bold">Expense<span class="text-blue-600">Mate</span></span>
             </a>
         </div>
 
         <div class="hidden md:flex space-x-8">
             <a href="{{ route('dashboard') }}"
-                class="text-gray-600 hover:text-primary transition {{ request()->routeIs('dashboard') ? 'text-primary font-medium border-b-2 border-primary' : '' }}">Dashboard</a>
+                class="text-gray-600 hover:text-blue-600 transition {{ request()->routeIs('dashboard') ? 'text-blue-600 font-medium border-b-2 border-blue-600' : '' }}">Dashboard</a>
             <a href="{{ route('transactions.index') }}"
-                class="text-gray-600 hover:text-primary transition {{ request()->routeIs('transactions.*') ? 'text-primary font-medium border-b-2 border-primary' : '' }}">Transactions</a>
+                class="text-gray-600 hover:text-blue-600 transition {{ request()->routeIs('transactions.*') ? 'text-blue-600 font-medium border-b-2 border-blue-600' : '' }}">Transactions</a>
             <a href="{{ route('categories.index') }}"
-                class="text-gray-600 hover:text-primary transition {{ request()->routeIs('categories.*') ? 'text-primary font-medium border-b-2 border-primary' : '' }}">Categories</a>
+                class="text-gray-600 hover:text-blue-600 transition {{ request()->routeIs('categories.*') ? 'text-blue-600 font-medium border-b-2 border-blue-600' : '' }}">Categories</a>
             <a href="{{ route('analytics') }}"
-                class="text-gray-600 hover:text-primary transition {{ request()->routeIs('analytics') ? 'text-primary font-medium border-b-2 border-primary' : '' }}">Analytics</a>
-            <a href="{{ route('export') }}" class="text-gray-600 hover:text-primary transition">Export</a>
+                class="text-gray-600 hover:text-blue-600 transition {{ request()->routeIs('analytics') ? 'text-blue-600 font-medium border-b-2 border-blue-600' : '' }}">Analytics</a>
+            <a href="{{ route('export') }}" class="text-gray-600 hover:text-blue-600 transition">Export</a>
         </div>
 
         <div class="flex items-center">
