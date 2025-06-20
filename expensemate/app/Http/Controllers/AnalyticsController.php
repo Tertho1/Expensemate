@@ -17,15 +17,21 @@ class AnalyticsController extends Controller
         // Get authenticated user ID
         $userId = Auth::id();
 
-        // Set default date range (current month)
-        $startDate = $request->input('start_date', Carbon::now()->startOfMonth()->format('Y-m-d'));
-        $endDate = $request->input('end_date', Carbon::now()->endOfMonth()->format('Y-m-d'));
+        // ENHANCED: Set default to "This Month" instead of current month range
+        $now = Carbon::now();
+        $defaultStartDate = $now->copy()->startOfMonth()->format('Y-m-d'); // First day of current month
+        $defaultEndDate = $now->copy()->endOfMonth()->format('Y-m-d');     // Last day of current month (handles 28/29/30/31 correctly)
+
+        $startDate = $request->input('start_date', $defaultStartDate);
+        $endDate = $request->input('end_date', $defaultEndDate);
 
         // DEBUG: Check the date range and user
         Log::info('Analytics Debug Start:', [
             'userId' => $userId,
             'startDate' => $startDate,
             'endDate' => $endDate,
+            'defaultStartDate' => $defaultStartDate,
+            'defaultEndDate' => $defaultEndDate,
             'requestParams' => $request->all()
         ]);
 
@@ -138,29 +144,49 @@ class AnalyticsController extends Controller
     {
         // Define color palettes
         $expenseColors = [
-            '#EF4444',
-            '#DC2626',
-            '#B91C1C',
-            '#991B1B',
-            '#7F1D1D',
-            '#F87171',
-            '#FCA5A5',
-            '#FEB2B2',
-            '#FECACA',
-            '#FEE2E2'
+            '#EF4444', // Red - Food
+                '#F97316', // Orange - Transport  
+                '#F59E0B', // Amber - Shopping
+                '#8B5CF6', // Purple - Entertainment
+                '#EC4899', // Pink - Healthcare
+                '#10B981', // Emerald - Bills
+                '#3B82F6', // Blue - Education
+                '#6366F1', // Indigo - Utilities
+                '#84CC16', // Lime - Rent
+                '#F472B6', // Rose - Gift
+                '#06B6D4', // Cyan - Business
+                '#8B5A2B', // Brown - Travel
+                '#DC2626', // Dark Red
+                '#EA580C', // Dark Orange
+                '#D97706', // Dark Amber
+                '#7C3AED', // Dark Purple
+                '#DB2777', // Dark Pink
+                '#059669', // Dark Emerald
+                '#2563EB', // Dark Blue
+                '#4F46E5'  // Dark Indigo
         ];
 
         $incomeColors = [
-            '#22C55E',
-            '#16A34A',
-            '#15803D',
-            '#166534',
-            '#14532D',
-            '#4ADE80',
-            '#86EFAC',
-            '#BBF7D0',
-            '#D1FAE5',
-            '#ECFDF5'
+            '#22C55E', // Green - Salary
+                '#16A34A', // Dark Green - Freelancing
+                '#15803D', // Darker Green - Investment
+                '#166534', // Forest Green - Business
+                '#14532D', // Very Dark Green
+                '#4ADE80', // Light Green
+                '#86EFAC', // Lighter Green
+                '#BBF7D0', // Very Light Green
+                '#10B981', // Emerald
+                '#059669', // Dark Emerald
+                '#047857', // Darker Emerald
+                '#065F46', // Forest Emerald
+                '#064E3B', // Very Dark Emerald
+                '#6EE7B7', // Light Emerald
+                '#A7F3D0', // Lighter Emerald
+                '#D1FAE5', // Very Light Emerald
+                '#34D399', // Medium Emerald
+                '#6BCF7F', // Custom Green 1
+                '#52C41A', // Custom Green 2
+                '#73D13D'  // Custom Green 3
         ];
 
         // Prepare expense pie data
